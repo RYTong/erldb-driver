@@ -1,0 +1,160 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module db_server</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module db_server</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>This server offers interfaces to fetch field names
+        in database and fresh them, and manage the connection pool.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> cao.xu (<a href="mailto:cao.xu@rytong.com"><tt>cao.xu@rytong.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>This server offers interfaces to fetch field names
+        in database and fresh them, and manage the connection pool.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#code_change-3">code_change/3</a></td><td>Convert process state when code is changed.</td></tr>
+<tr><td valign="top"><a href="#connect-2">connect/2</a></td><td>Connect to database with connect parameters in Args.</td></tr>
+<tr><td valign="top"><a href="#disconnect-1">disconnect/1</a></td><td>Disconnect database with connect name.</td></tr>
+<tr><td valign="top"><a href="#get_db_config-1">get_db_config/1</a></td><td>Get db config content.</td></tr>
+<tr><td valign="top"><a href="#get_db_config-2">get_db_config/2</a></td><td>Get db config content.</td></tr>
+<tr><td valign="top"><a href="#get_drv-1">get_drv/1</a></td><td>Get connection pool id with name.</td></tr>
+<tr><td valign="top"><a href="#get_drv_type-1">get_drv_type/1</a></td><td>Get connection database type with name.</td></tr>
+<tr><td valign="top"><a href="#get_keys-1">get_keys/1</a></td><td>Get the field list of table.</td></tr>
+<tr><td valign="top"><a href="#get_keys-2">get_keys/2</a></td><td>Get the field list of table.</td></tr>
+<tr><td valign="top"><a href="#handle_call-3">handle_call/3</a></td><td>Handling call messages.</td></tr>
+<tr><td valign="top"><a href="#handle_cast-2">handle_cast/2</a></td><td>Handling cast messages.</td></tr>
+<tr><td valign="top"><a href="#handle_info-2">handle_info/2</a></td><td>Handling all non call/cast messages.</td></tr>
+<tr><td valign="top"><a href="#init-1">init/1</a></td><td>Initiates the server, and load db driver lib.</td></tr>
+<tr><td valign="top"><a href="#init_default-1">init_default/1</a></td><td>Read config and init default connection pool.</td></tr>
+<tr><td valign="top"><a href="#init_default-2">init_default/2</a></td><td>Read config and init default connection pool.</td></tr>
+<tr><td valign="top"><a href="#make_default-1">make_default/1</a></td><td>Make to default connection pool.</td></tr>
+<tr><td valign="top"><a href="#start-0">start/0</a></td><td>Call start_link/1, use DATABASE_LIB_DIR as PrivPath.</td></tr>
+<tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td>Start db server and load db driver lib.</td></tr>
+<tr><td valign="top"><a href="#stop-0">stop/0</a></td><td>Stop db server.</td></tr>
+<tr><td valign="top"><a href="#terminate-2">terminate/2</a></td><td>Disconnect all connections, unload db driver lib and shutdown
+   the server.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="code_change-3">code_change/3</a></h3>
+<div class="spec">
+<p><tt>code_change(OldVsn, State, Extra) -&gt; {ok, State}</tt></p>
+</div><p>Convert process state when code is changed.</p>
+
+<h3 class="function"><a name="connect-2">connect/2</a></h3>
+<div class="spec">
+<p><tt>connect(Name::atom(), ArgTuple::list()) -&gt; {ok, Name} | {error, Err}</tt></p>
+</div><p>Connect to database with connect parameters in Args.
+   and register the database driver instance with name Name
+   in ets ?DBINFO.</p>
+
+<h3 class="function"><a name="disconnect-1">disconnect/1</a></h3>
+<div class="spec">
+<p><tt>disconnect(DbName::atom()) -&gt; {ok, Res} | {error, Err}</tt></p>
+</div><p>Disconnect database with connect name.
+   and unregister the database driver instance with name Name
+   in ets ?DBINFO.</p>
+
+<h3 class="function"><a name="get_db_config-1">get_db_config/1</a></h3>
+<div class="spec">
+<p><tt>get_db_config(ConfigName::atom()) -&gt; term() | <a href="#type-throw">throw()</a></tt></p>
+</div><p>Get db config content. Config path is config/db.conf in current dir
+   or install dir.</p>
+
+<h3 class="function"><a name="get_db_config-2">get_db_config/2</a></h3>
+<div class="spec">
+<p><tt>get_db_config(ConfigName::atom(), ConfigPath::string()) -&gt; term() | <a href="#type-throw">throw()</a></tt></p>
+</div><p>Get db config content.</p>
+
+<h3 class="function"><a name="get_drv-1">get_drv/1</a></h3>
+<div class="spec">
+<p><tt>get_drv(Name::atom()) -&gt; binary() | <a href="#type-throw">throw()</a></tt></p>
+</div><p>Get connection pool id with name.</p>
+
+<h3 class="function"><a name="get_drv_type-1">get_drv_type/1</a></h3>
+<div class="spec">
+<p><tt>get_drv_type(Name::atom()) -&gt; integer() | undefined</tt></p>
+</div><p>Get connection database type with name.</p>
+
+<h3 class="function"><a name="get_keys-1">get_keys/1</a></h3>
+<div class="spec">
+<p><tt>get_keys(Table::atom()) -&gt; list()</tt></p>
+</div><p>Get the field list of table.
+   Call get_keys/2, use default drv name as Name.</p>
+
+<h3 class="function"><a name="get_keys-2">get_keys/2</a></h3>
+<div class="spec">
+<p><tt>get_keys(Name::atom(), Table::atom()) -&gt; list()</tt></p>
+</div><p>Get the field list of table.</p>
+
+<h3 class="function"><a name="handle_call-3">handle_call/3</a></h3>
+<div class="spec">
+<p><tt>handle_call(Msg::atom(), From, State) -&gt; {reply, Reply, State} | {reply, Reply, State, Timeout} | {noreply, State} | {noreply, State, Timeout} | {stop, Reason, Reply, State} | {stop, Reason, State}</tt></p>
+</div><p>Handling call messages.</p>
+
+<h3 class="function"><a name="handle_cast-2">handle_cast/2</a></h3>
+<div class="spec">
+<p><tt>handle_cast(Msg::atom(), State) -&gt; {noreply, State} | {noreply, State, Timeout} | {stop, Reason, State}</tt></p>
+</div><p>Handling cast messages.</p>
+
+<h3 class="function"><a name="handle_info-2">handle_info/2</a></h3>
+<div class="spec">
+<p><tt>handle_info(Info, State) -&gt; {noreply, State} | {noreply, State, Timeout} | {stop, Reason, State}</tt></p>
+</div><p>Handling all non call/cast messages.</p>
+
+<h3 class="function"><a name="init-1">init/1</a></h3>
+<div class="spec">
+<p><tt>init(DrvPath::string()) -&gt; {ok, [pid()]}</tt></p>
+</div><p>Initiates the server, and load db driver lib.</p>
+
+<h3 class="function"><a name="init_default-1">init_default/1</a></h3>
+<div class="spec">
+<p><tt>init_default(ConfigName::atom()) -&gt; ok | <a href="#type-throw">throw()</a></tt></p>
+</div><p>Read config and init default connection pool.
+   Call init_default/2, use "config" as ConfigPath.</p>
+<p><b>See also:</b> <a href="#init_default-2">init_default/2</a>.</p>
+
+<h3 class="function"><a name="init_default-2">init_default/2</a></h3>
+<div class="spec">
+<p><tt>init_default(ConfigName::atom(), ConfigName::string()) -&gt; ok | <a href="#type-throw">throw()</a></tt></p>
+</div><p>Read config and init default connection pool.</p>
+
+<h3 class="function"><a name="make_default-1">make_default/1</a></h3>
+<div class="spec">
+<p><tt>make_default(Name::atom()) -&gt; ok</tt></p>
+</div><p>Make to default connection pool.</p>
+
+<h3 class="function"><a name="start-0">start/0</a></h3>
+<div class="spec">
+<p><tt>start() -&gt; pid()</tt></p>
+</div><p>Call start_link/1, use DATABASE_LIB_DIR as PrivPath.</p>
+<p><b>See also:</b> <a href="#start_link-1">start_link/1</a>.</p>
+
+<h3 class="function"><a name="start_link-1">start_link/1</a></h3>
+<div class="spec">
+<p><tt>start_link(PrivPath::string()) -&gt; pid()</tt></p>
+</div><p>Start db server and load db driver lib.</p>
+
+<h3 class="function"><a name="stop-0">stop/0</a></h3>
+<div class="spec">
+<p><tt>stop() -&gt; ok</tt></p>
+</div><p>Stop db server. Disconnect all conections and unload db driver lib.</p>
+
+<h3 class="function"><a name="terminate-2">terminate/2</a></h3>
+<div class="spec">
+<p><tt>terminate(Reason, X2::[Pid::pid()]) -&gt; ok</tt></p>
+</div><p>Disconnect all connections, unload db driver lib and shutdown
+   the server.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 25 2011, 15:42:24.</i></p>
+</body>
+</html>
