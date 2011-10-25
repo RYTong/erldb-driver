@@ -1,0 +1,66 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for detection of mysql libraries.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+
+# Detecting MySQL headers
+AC_ARG_WITH(mysql,
+    AS_HELP_STRING([--with-mysql], [turn on mysql client on system]),
+    [with_mysql='yes'],
+    [with_mysql='no'])
+
+if test "$with_mysql" != 'no' ; then
+AC_MSG_CHECKING([MySQL headers])
+MYSQL_INCL=""
+for d in \
+  /usr/include/mysql \
+  /usr/local/include/mysql \
+  /usr/local/mysql/include \
+  /opt/local/include/mysql \
+  /opt/local/include/mysql5/mysql \
+; do
+    if test -r $d/mysql.h ; then
+       MYSQL_INCL=$d
+    fi
+done
+AC_MSG_RESULT([$MYSQL_INCL])
+if test "x$MYSQL_INCL" = "x" ; then
+   AC_MSG_ERROR([Cannot find MySQL!])
+fi
+
+# Detecting MySQL libraries
+AC_MSG_CHECKING([MySQL library])
+LIBPATH=lib
+if test `uname -p` = "x86_64" ; then
+    LIBPATH=lib64
+fi
+for d in \
+    /usr/$LIBPATH/mysql \
+    /usr/local/$LIBPATH/mysql \
+    /opt/local/lib/mysql \
+    /opt/local/lib/mysql5/mysql \
+    /usr/local/mysql/lib \
+; do
+    if test -r $d/libmysqlclient_r.a -o -r $d/libmysqlclient_r.${SHLIB_SUFFIX} ; then
+       MYSQL_LIB=$d
+    fi
+done
+AC_MSG_RESULT([$MYSQL_LIB])
+if test "x$MYSQL_LIB" = "x" ; then
+   AC_MSG_ERROR([Cannot find MySQL!])
+fi
+
+if test "x$MYSQL_LIB" != "x" ; then
+   DB="db"
+fi
+MYSQL_CFLAGS="-DUSE_MYSQL ${CFLAGS} -I${MYSQL_INCL}"
+MYSQL_LIBS="-L$MYSQL_LIB -lmysqlclient_r"
+MYSQL_SRC="c_src/mysql/MysqlConnection.cpp c_src/mysql/MysqlDBOperation.cpp"
+AC_SUBST(MYSQL_CFLAGS)
+AC_SUBST(MYSQL_LIBS)
+AC_SUBST(MYSQL_SRC)
+fi

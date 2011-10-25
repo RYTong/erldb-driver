@@ -1,0 +1,74 @@
+# -*- mode: makefile -*-
+# C/C++ build rules
+#
+# Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+# All rights reserved.
+#
+# No part of this source code may be copied, used, or modified
+# without the express written consent of RYTong.
+
+DEPDIR = .deps
+dd = $(DEPDIR)/$(*D)
+df = $(DEPDIR)/$(*D)/$(*F)
+
+#
+# Define this variable from command line, or uncomment this in
+# the generated Makefile.include, to turn on verbose output during
+# compilation and linking.
+# Usage: make RYT_VERBOSE=1
+#
+# RYT_VERBOSE := 1
+
+.SUFFIXES: .cc .cpp .c .h 
+
+#
+# Rules to build a library
+#
+ifeq ($(suffix $(GOAL)),.a)
+
+$(GOAL): $(OBJS)
+	@COMP="$(AR) $@ $^" ; \
+	  $(ECHO) $(if $(RYT_VERBOSE), "$$COMP","  [Archive]\t$@") ; $$COMP
+
+else
+ifeq ($(suffix $(GOAL)),.so)
+
+# XXX It seems we have to use ld on aix and g++ on linux and mac.
+$(GOAL): $(OBJS)
+	@COMP="$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)" ; \
+	  $(ECHO) $(if $(RYT_VERBOSE), "$$COMP","  [Link]\t$@") ; $$COMP
+
+endif
+endif
+
+%.o: %.c
+	@COMP="$(CC) -MD -c $(CFLAGS) $(INCLS) $< -o $@" ; \
+	$(ECHO) $(if $(RYT_VERBOSE),"$$COMP","  [Compile]\t$@") ; \
+	$$COMP ; \
+	if ! test -d $(dd) ; then mkdir -p $(dd) ; fi ; \
+	 cp $*.d $(df).P; \
+	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	    -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $(df).P; \
+	  rm -f $*.d
+
+%.o: %.cpp
+	@COMP="$(CXX) -MD -c $(CFLAGS) $(INCLS) $< -o $@" ; \
+	$(ECHO) $(if $(RYT_VERBOSE),"$$COMP","  [Compile]\t$@") ; \
+	$$COMP ; \
+	if ! test -d $(dd) ; then mkdir -p $(dd) ; fi ; \
+	 cp $*.d $(df).P; \
+	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	    -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $(df).P; \
+	  rm -f $*.d
+
+%.o: %.cc
+	@COMP="$(CXX) -MD -c $(CFLAGS) $(INCLS) $< -o $@" ; \
+	$(ECHO) $(if $(RYT_VERBOSE),"$$COMP","  [Compile]\t$@") ; \
+	$$COMP ; \
+	if ! test -d $(dd) ; then mkdir -p $(dd) ; fi ; \
+	 cp $*.d $(df).P; \
+	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	    -e '/^$$/ d' -e 's/$$/ :/' < $*.d >> $(df).P; \
+	  rm -f $*.d
+
+-include $(C_SRCS:%.c=$(DEPDIR)/%.P) $(CXX_SRCS:%.cpp=$(DEPDIR)/%.P) $(CC_SRCS:%.cc=$(DEPDIR)/%.P)

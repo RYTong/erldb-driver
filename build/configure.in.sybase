@@ -1,0 +1,67 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for detection of sybase libraries.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+dnl
+dnl $Id$
+
+# Detecting SYBASE headers
+AC_ARG_WITH(sybase,
+    AS_HELP_STRING([--with-sybase], [turn on sybase client on system]),
+    [with_sybase='yes'],
+    [with_sybase='no'])
+
+if test "$with_sybase" != 'no' ; then
+AC_MSG_CHECKING([SYBASE headers])
+SYBASE_INCL=""
+for d in \
+  $SYBASE/$SYBASE_OCS/include \
+  /usr/local/include/sybase \
+; do
+    if test -r $d/ctpublic.h; then
+        SYBASE_INCL=$d
+    fi
+done
+AC_MSG_RESULT([$SYBASE_INCL])
+
+SYBASE_CFLAGS=""
+SYBASE_LIBS=""
+
+if test "x$SYBASE_INCL" = "x" ; then
+    AC_MSG_ERROR([Cannot find SYBASE HEAD FILE!])
+else 
+    # Detecting SYBASE libraries
+    AC_MSG_CHECKING([SYBASE library])
+    SYBASE_LIB=""
+        if test -z "$SYBASE/$SYBASE_OCS"; then
+            AC_MSG_RESULT([Sybase open client must be installed first.])
+        fi
+        if test -r ${SYBASE}/${SYBASE_OCS}/lib/libsybct_r64.${SHLIB_SUFFIX} \
+            -o -r ${SYBASE}/${SYBASE_OCS}/lib/libsybct_r64.a; then
+            SYBASE_LIB=${SYBASE}/${SYBASE_OCS}/lib
+        fi
+    AC_MSG_RESULT([$SYBASE_LIB])
+    if test "x$SYBASE_LIB" = "x" ; then
+        AC_MSG_ERROR([Cannot find sybase CT library])
+    else
+        SYBASE_CFLAGS="-DSYB_LP64 -D_REENTRANT -DUSE_SYBASE -I${SYBASE_INCL}"
+        SYBASE_SRC="c_src/sybase/SybUtils.cpp c_src/sybase/SybConnection.cpp c_src/sybase/SybStatement.cpp c_src/sybase/SybDBOperation.cpp"
+	SYBASE_LIBS="-L$SYBASE_LIB -lsybct_r64"
+    fi
+fi
+
+if test "x$SYBASE_LIB" != "x" ; then
+   DB="db"
+fi
+
+if test -z "$SYBASE_SRC"; then
+    SYBASE_SRC=""
+fi
+AC_SUBST(SYBASE_SRC)
+AC_SUBST(SYBASE_CFLAGS)
+AC_SUBST(SYBASE_LIBS)
+fi

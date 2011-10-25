@@ -1,0 +1,72 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for detection of oracle libraries.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+dnl
+dnl $Id$
+
+# Detecting ORACLE headers
+AC_ARG_WITH(oracle,
+    AS_HELP_STRING([--with-oracle], [turn on oracle client on system]),
+    [with_oracle='yes'],
+    [with_oracle='no'])
+
+if test "$with_oracle" != 'no' ; then
+AC_MSG_CHECKING([ORACLE headers])
+ORACLE_INCL=""
+for d in \
+  /usr/include/oracle/ \
+  /usr/local/include/oracle \
+  /usr/local/oracle/include \
+  /opt/local/include/oracle \
+; do
+    if test -d $d; then
+        OCCI_H=`find $d -name "occi.h"`
+        if test -r $OCCI_H ; then
+            ORACLE_INCL=`dirname $OCCI_H`
+        fi
+    fi
+done
+AC_MSG_RESULT([$ORACLE_INCL])
+
+ORACLE_CFLAGS=""
+ORACLE_LIBS=""
+
+if test "x$ORACLE_INCL" = "x" ; then
+    AC_MSG_ERROR([Cannot find ORACLE HEAD FILE!])
+else 
+    # Detecting ORACLE libraries
+    AC_MSG_CHECKING([ORACLE library])
+    ORACLE_LIB=""
+        if test -z "$ORACLE_HOME"; then
+            AC_MSG_RESULT([Oracle client must be installed first.])
+        fi
+        if test -r ${ORACLE_HOME}/lib/libocci.${SHLIB_SUFFIX} \
+            -a -r ${ORACLE_HOME}/lib/libclntsh.${SHLIB_SUFFIX}; then
+            ORACLE_LIB=${ORACLE_HOME}/lib
+        fi
+    AC_MSG_RESULT([$ORACLE_LIB])
+    if test "x$ORACLE_LIB" = "x" ; then
+        AC_MSG_ERROR([Cannot find oracle LIB.])
+    else
+        ORACLE_CFLAGS="-DUSE_ORACLE -I${ORACLE_INCL}"
+        ORACLE_SRC="c_src/oracle/OracleConnection.cpp c_src/oracle/OracleDBOperation.cpp"
+	ORACLE_LIBS="-L$ORACLE_LIB -locci -lclntsh"
+    fi
+fi
+
+if test "x$ORACLE_LIB" != "x" ; then
+   DB="db"
+fi
+
+if test -z "$ORACLE_SRC"; then
+    ORACLE_SRC=""
+fi
+AC_SUBST(ORACLE_SRC)
+AC_SUBST(ORACLE_CFLAGS)
+AC_SUBST(ORACLE_LIBS)
+fi
