@@ -1,0 +1,26 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for checking debugging mode.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+
+# Check debugging mode
+AC_ARG_WITH(debug,
+    AS_HELP_STRING([--with-debug], [turn on debugging]),
+    [with_debug='yes'],
+    [with_debug='no'])
+
+if test "$with_debug" != 'no' ; then
+   CFLAGS=`echo $CFLAGS | sed 's/-O[[0-9]]//' | sed 's/-g//'`
+   CFLAGS="$CFLAGS -DDEBUG -g3 -Wall"
+   ERLC_FLAGS="$ERLC_FLAGS +debug_info -Dewp_debug_flag"
+   EMAKE_FLAGS="debug_info, {d, ewp_debug_flag}"
+else
+   CFLAGS=`echo $CFLAGS|sed 's/-g//'`
+   CFLAGS="$CFLAGS -DNDEBUG -O2 -Wall -finline-functions"
+   ERLC_FLAGS="$ERLC_FLAGS +no_debug_info"
+   EMAKE_FLAGS="no_debug_info"
+fi

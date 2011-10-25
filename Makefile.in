@@ -1,0 +1,113 @@
+# Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+# All rights reserved.
+#
+# No part of this source code may be copied, used, or modified
+# without the express written consent of RYTong.
+
+# Variables
+SRC_TOP = @SRC_TOP@
+
+SHELL = /bin/sh
+ECHO = @ECHO@
+CC = @CC@
+CXX = @CXX@
+LD = @LD@
+AR = ar rucs
+ERL = @ERLANG@
+ERL_ROOT = @ERL_ROOT@
+ERL_INTF_ROOT = @ERL_INTF_ROOT@
+ERL_DRV = @ERL_HOME@/erlang/usr
+DIALYZER = @ERL_HOME@/erlang/bin/dialyzer
+ERL_LIBDIR = @ERL_LIBDIR@
+
+CFLAGS = @CFLAGS@ @CPPFLAGS@ @MYSQL_CFLAGS@ @ORACLE_CFLAGS@ @SYBASE_CFLAGS@
+LDFLAGS = @LDFLAGS@
+SHLIB_SUFFIX = @SHLIB_SUFFIX@
+CUR_DIR = $(shell pwd)
+DRI_LIB = $(SRC_TOP)/priv
+MYSQL_SRC = @MYSQL_SRC@
+ORACLE_SRC = @ORACLE_SRC@
+SYBASE_SRC = @SYBASE_SRC@
+
+APPNAME = db_driver
+VERSION = 1.0.0
+TARGETDIR = $(APPNAME)-$(VERSION)
+
+# NOTE: we include both erl_driver and erl_interface so that we can 
+# use either one.
+INCLS =\
+    -I$(ERL_DRV)/include \
+    -I$(ERL_ROOT)/include \
+    -I$(ERL_INTF_ROOT)/include \
+    -I$(CUR_DIR)/c_src \
+    -I$(CUR_DIR)/c_src/util
+
+LIBS = @MYSQL_LIBS@ @ORACLE_LIBS@ @SYBASE_LIBS@ -L$(ERL_INTF_ROOT)/lib -L$(ERL_DRV)/lib -lei -lpthread
+
+# NOTE: We *must* define the following two variables in order for
+# Makefile.include.c_build to work!  These two variables must be in the names
+# of C_SRCS and CXX_SRCS.
+C_SRCS = 
+CXX_SRCS =\
+    c_src/database_drv.cpp \
+    c_src/base/AsyncDrv.cpp \
+    c_src/base/ThreadPool.cpp \
+    c_src/base/DatabaseDrv.cpp \
+    c_src/util/SysLogger.cpp \
+    c_src/util/TimeVal.cpp \
+    c_src/base/StmtMap.cpp \
+    c_src/base/DBOperation.cpp \
+    c_src/base/ConnectionPool.cpp \
+    c_src/base/Connection.cpp \
+    $(MYSQL_SRC) \
+    $(ORACLE_SRC) \
+    $(SYBASE_SRC)
+
+OBJS = $(CXX_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
+
+GOAL = $(DRI_LIB)/database_drv.so
+
+.PHONY: all docs doc libdoc clean docsclean distclean
+
+all: ebin $(GOAL)
+
+# Build rules
+ERL_SRCDIR = src
+include $(SRC_TOP)/build/Makefile.include.erl_build
+include $(SRC_TOP)/build/Makefile.include.c_build
+
+docs: doc libdoc
+
+libdoc:
+	doxygen doc/db.doxyfile
+
+install:
+	install -d $(ERL_LIBDIR)/$(TARGETDIR)/priv
+	install -d $(ERL_LIBDIR)/$(TARGETDIR)/ebin
+	install -d $(ERL_LIBDIR)/$(TARGETDIR)/src
+	install -d $(ERL_LIBDIR)/$(TARGETDIR)/include
+	install -d $(ERL_LIBDIR)/$(TARGETDIR)/config
+
+	install -m 0644 $(SRC_TOP)/include/* $(ERL_LIBDIR)/$(TARGETDIR)/include/
+	install -m 0644 $(SRC_TOP)/ebin/* $(ERL_LIBDIR)/$(TARGETDIR)/ebin/
+	install -m 0644 $(SRC_TOP)/priv/* $(ERL_LIBDIR)/$(TARGETDIR)/priv/
+	install -m 0644 $(SRC_TOP)/src/* $(ERL_LIBDIR)/$(TARGETDIR)/src/
+	install -m 0644 $(SRC_TOP)/config/* $(ERL_LIBDIR)/$(TARGETDIR)/config/
+
+uninstall:
+	rm -rfv $(ERL_LIBDIR)/$(TARGETDIR)
+
+clean:
+	rm -f c_src/*.o c_src/*/*.o $(GOAL) $(EBIN_DIR)/*.beam
+
+docsclean:
+	rm -fv doc/*.html
+	rm -fv doc/edoc-info
+	rm -fv doc/*.css
+	rm -fv doc/erlang.png
+	rm -rfv doc/lib
+
+distclean: clean docsclean
+	rm -f Emakefile Makefile config.cache config.log \
+	  lib/* ebin/* c_src/*~ src/*~ *~ include/emagick_config.h include/*~ 
+	rm -rf autom4te.cache .deps

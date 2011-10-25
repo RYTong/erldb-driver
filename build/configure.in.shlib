@@ -1,0 +1,49 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for detection of shared library in different OSs.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+dnl
+dnl $Id$
+
+# Detect shared library suffix
+AC_MSG_CHECKING([Shared library])
+system=`uname -s`-`uname -r`
+if test "$status" = 1 ; then
+    system=undefined
+fi
+case $system in
+    Darwin-*)
+	SHLIB_SUFFIX="dylib"
+        LD="$CXX"
+	# See otp/lib/crypto build output to find out about the mac build flags.
+        LDFLAGS="-bundle -flat_namespace -undefined suppress"
+	CFLAGS="$CFLAGS -fPIC"
+	ECHO="echo"
+        ;;
+    Linux*)
+        LD="$CXX"
+        LDFLAGS="-shared -fpic -ldl"
+	CFLAGS="$CFLAGS -fpic"
+        SHLIB_SUFFIX="so"
+	ECHO="echo -e"
+        ;;
+    AIX*)
+	LD="ld"
+        LDFLAGS="-bnoentry -bexpall -G"
+        CFLAGS="$CFLAGS -fPIC"
+        SHLIB_SUFFIX="so"
+        ECHO="echo"
+	;;
+     *)
+        AC_MSG_ERROR([Cannot find how to generate shared library.])
+	;;
+esac
+AC_MSG_RESULT([Done])
+AC_SUBST(LD)
+AC_SUBST(LDFLAGS)
+AC_SUBST(SHLIB_SUFFIX)
+AC_SUBST(ECHO)

@@ -1,0 +1,79 @@
+dnl -*- Mode: autoconf; -*-
+dnl autoconf library script for detection of erlang.
+dnl 
+dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+dnl All rights reserved.
+dnl
+dnl No part of this source code may be copied, used, or modified
+dnl without the express written consent of RYTong.
+
+AC_PATH_PROG(ERLANG, erl,)
+if test -z "$ERLANG"; then
+    AC_MSG_ERROR([Erlang must be installed to build.])
+fi
+
+# Check for erl_interface library and headers.
+ERL_BINROOT=`dirname $ERLANG`
+ERL_ROOT=`dirname $ERL_BINROOT`
+if test `uname -p` = "x86_64" ; then
+    ERL_HOME=$ERL_ROOT/lib64
+elif test `uname -s` = "AIX" ; then
+    ERL_HOME=/opt/freeware/lib
+else
+    ERL_HOME=$ERL_ROOT/lib
+fi
+ERL_LIBDIR=$ERL_HOME/erlang/lib
+ERL_INTF_ROOT=""
+
+dnl
+dnl Find erlang/C interface library
+dnl
+AC_MSG_CHECKING([erl_interface])
+for d in $ERL_LIBDIR/erl_interface* ; do
+    if test -r $d/include/erl_interface.h ; then
+       ERL_INTF_ROOT=$d
+    fi
+done
+if test "x$ERL_INTF_ROOT" = "x" ; then
+   AC_MSG_ERROR([Cannot find erl_interface library])
+fi
+AC_MSG_RESULT([$ERL_INTF_ROOT])
+
+dnl
+dnl Find a bunch of library paths for dialyzer
+dnl
+AC_MSG_CHECKING([other erlang libraries])
+ERL_KERNEL=""
+for d in $ERL_LIBDIR/kernel* ; do
+    if test -r $d/ebin ; then
+       ERL_KERNEL=$d
+    fi
+done
+ERL_STDLIB=""
+for d in $ERL_LIBDIR/stdlib* ; do
+    if test -r $d/ebin ; then
+       ERL_STDLIB=$d
+    fi
+done
+ERL_XMERL=""
+for d in $ERL_LIBDIR/xmerl* ; do
+    if test -r $d/ebin ; then
+       ERL_XMERL=$d
+    fi
+done
+ERL_MNESIA=""
+for d in $ERL_LIBDIR/mnesia* ; do
+    if test -r $d/ebin ; then
+       ERL_MNESIA=$d
+    fi
+done
+AC_MSG_RESULT([$ERL_KERNEL $ERL_STDLIB $ERL_XMERL $ERL_MNESIA])
+
+AC_SUBST(ERL_ROOT)
+AC_SUBST(ERL_HOME)
+AC_SUBST(ERL_INTF_ROOT)
+AC_SUBST(ERL_KERNEL)
+AC_SUBST(ERL_STDLIB)
+AC_SUBST(ERL_XMERL)
+AC_SUBST(ERL_MNESIA)
+AC_SUBST(ERL_LIBDIR)

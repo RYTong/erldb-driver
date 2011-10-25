@@ -1,0 +1,42 @@
+# -*- mode: makefile -*-
+# Erlang build rules
+#
+# Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
+# All rights reserved.
+#
+# No part of this source code may be copied, used, or modified
+# without the express written consent of RYTong.
+
+# NOTE: every application that includes these rules must define:
+# (1) APPNAME: the application name.
+# (2) SRC_TOP: the top-level build directory above all apps.
+# (3) VERSION: application version.
+# (4) ERL, ERLC, ERLC_FLAGS, ERLC_INCLS: parameters to the erlang compiler.
+# (5) DIALYZER: erlang dialyzer.
+
+.PHONY: ebin doc dialyzer $(APPNAME).plt 
+
+.SUFFIXES: .erl .hrl
+
+EBIN_DIR = $(SRC_TOP)/ebin
+
+ifdef ERL_SRCDIR
+ERL_SRCS = $(shell find $(ERL_SRCDIR) -name \*.erl)
+ERL_MODS = $(basename $(notdir $(ERL_SRCS)))
+ERL_BEAMS = $(addsuffix .beam, $(ERL_MODS))
+ERL_BEAM_PATHS = $(addprefix $(EBIN_DIR)/,$(ERL_BEAMS))
+endif
+
+## XXX: $${LINE:0:10} will cause problem during building on aix, so we should comment it out then.
+ebin:
+	@$(ERL) -noshell -make $(ERLC_LIBS) -s erlang halt 
+
+doc:
+	$(ERL) -noshell -run edoc_run application "'$(APPNAME)'" '"."' '[{def, {vsn,"$(VERSION)"}}, no_packages, {subpackages, true}]'
+
+$(APPNAME).plt:
+	$(DIALYZER) --build_plt --output_plt $@ $(DIALYZER_STDLIB)
+
+dialyzer: $(APPNAME).plt
+	$(DIALYZER) --plt $(APPNAME).plt -r .
+
