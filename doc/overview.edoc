@@ -16,7 +16,6 @@
 {@section Tests}<br/>
 {@section Data Type}<br/>
 {@section Notices}<br/>
-{@section Having Problems?}<br/>
 
 == Introduction ==
 
@@ -284,8 +283,3 @@ SMALLMONEY      float()
 1. Oracle prepare statement.
     Prepare sql is like "select ?,? from user", but prepare sql in Oracle is like "select :1,:2 from user".
     You can consistently use two methods in module db_api, but you can only use the second method in module db_driver.
-
-
-== Having Problems? ==
-
-This is problems.
