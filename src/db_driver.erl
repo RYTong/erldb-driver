@@ -88,14 +88,14 @@ start(DrvPath) ->
 stop(Pid) ->
     Pid ! stop.
 
-%% @doc Starts a connection and, if successful, add it to the
+%% @doc Start a connection and, if successful, add it to the
 %%   connection pool in the driver.
 %% @spec connect(ArgTuple::list()) -> {ok, Res} | {error, Err}
 connect(ArgTuple) ->
     Args = get_connect_tuple(ArgTuple),
     command(?DRV_CONNECT, Args).
 
-%% @doc Stops a connection and, if successful, remove it from the
+%% @doc Stop a connection and, if successful, remove it from the
 %%   connection pool in the driver.
 %% @spec disconnect(ConnPool::binary()) ->
 %%    {ok, Res} | {error, Err}

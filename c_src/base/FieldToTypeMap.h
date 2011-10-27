@@ -13,14 +13,12 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
  * the License for the specific language governing rights and limitations
  * under the License.
- *
- * File:        FiledToTypeMap.h
- * Author:      cao.xu <cao.xu@rytong.com>
- * Version:     v1.0.0
- * Description: 
- * Others:
- * History:
- * Created on 2010-3-10
+ * 
+ *  @file FieldToTypeMap.h
+ *  @brief Storage database fields.
+ *  @author cao.xu <cao.xu@rytong.com>
+ *  @version 1.0.0
+ *  @date Wed Mar 10 14:24:38 CST 2010
  */
 
 #ifndef _RYT_FIELD_TO_TYPE_MAP_H
@@ -31,6 +29,8 @@
 using namespace std;
 
 namespace rytong {
+/** @brief Storage database fields.
+ */
 class FieldToTypeMap {
 public:
     ~FieldToTypeMap();
@@ -67,14 +67,15 @@ public:
 
     /**
      * Function: add
-     * Description: store the mapping into the map, which use table_name + field_name
-     *              as the key and type as value.
-     *              we should add mutex if we want this interface to be thread-safe.
+     * Description: store the mapping into the map, which use 
+     *              table_name + field_name as the key and type as value.
+     *              we should add mutex if we want this interface to be 
+     *              thread-safe.
      * Input: table_name -> table name in database
      *        field_name -> field_name in database
      *        type -> type of field in database
      * Output:
-     * Returns: ture|false
+     * Returns: true|false
      */
     bool add(const string& table_name, const string& field_name, int type) {
         string key = table_name + "." + field_name;
