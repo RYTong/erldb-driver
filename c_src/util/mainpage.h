@@ -9,8 +9,6 @@
  *  @author wang.meigong <wang.meigong@rytong.com>
  *  @version 1.0
  *
- *  This is overview.
- *
  *  @section Copyright
  *
  * Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.

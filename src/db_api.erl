@@ -104,13 +104,13 @@ start(DrvPath) ->
 stop(Pid) ->
     db_driver:stop(Pid).
 
-%% @doc Starts a connection and, if successful, add it to the
+%% @doc Start a connection and, if successful, add it to the
 %%   connection pool in the driver.
 %% @spec connect(ArgTuple::list()) -> {ok, Res} | {error, Err}
 connect(ArgTuple) ->
     db_driver:connect(ArgTuple).
 
-%% @doc Stops a connection and, if successful, remove it from the
+%% @doc Stop a connection and, if successful, remove it from the
 %%   connection pool in the driver.
 %% @spec disconnect(DbName::atom()) -> {ok, Res} | {error, Err}
 disconnect(DbName) ->
