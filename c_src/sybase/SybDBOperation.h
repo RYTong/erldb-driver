@@ -1108,7 +1108,7 @@ private:
         switch (get_erl_type()) {
             case ERL_NIL_EXT:
                 if (retcode = decode_empty_list()) {
-                    stream << "''";
+                    stream << "\"\"";
                 }
                 break;
                 
@@ -1153,7 +1153,7 @@ private:
         if (!decode_string(value)) {
             return false;
         }
-        stream << " '" << value << "'";
+        stream << " \"" << value << "\"";
         free_string(value);
         
         return true;
@@ -1452,7 +1452,7 @@ private:
                 
             case ERL_NIL_EXT:
                 if (retcode = decode_empty_list()) {
-                    sqlstream << " ''";
+                    sqlstream << " \"\"";
                 }
                 break;
 

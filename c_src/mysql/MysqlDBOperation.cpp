@@ -733,16 +733,16 @@ void MysqlDBOperation::fill_value(stringstream & sm, FieldValue &field) {
         case ERL_BINARY_EXT:
             new_bin = new char[2 * field.length + 1];
             mysql_real_escape_string((MYSQL*) (conn_->get_connection()), new_bin, (char*) field.value, field.length);
-            sm << " '" << new_bin << "'";
+            sm << " \"" << new_bin << "\"";
             delete [] new_bin;
             break;
         case ERL_ATOM_EXT:
         case ERL_LIST_EXT:
         case ERL_STRING_EXT:
-            sm << "'" << (char*) field.value << "'";
+            sm << "\"" << (char*) field.value << "\"";
             break;
         default:
-            sm << "'" << (char*) field.value << "'";
+            sm << "\"" << (char*) field.value << "\"";
             break;
     }
 }
@@ -816,7 +816,7 @@ void MysqlDBOperation::decode_expr(stringstream& sm) {
     } else if (ERL_STRING_EXT == type_ || ERL_LIST_EXT == type_) {
         char * str = NULL;
         decode_string(str);
-        sm << " '" << str << "'";
+        sm << " \"" << str << "\"";
         free_string(str);
     } else if (ERL_ATOM_EXT == type_) {
         // char str[20];
@@ -835,7 +835,7 @@ void MysqlDBOperation::decode_expr(stringstream& sm) {
         int len = decode_binary(bin);
         char *new_bin = new char[2 * len + 1];
         mysql_real_escape_string((MYSQL*) (conn_->get_connection()), new_bin, bin, len);
-        sm << " '" << new_bin << "'";
+        sm << " \"" << new_bin << "\"";
         free_binary(bin);
         delete [] new_bin;
     }
@@ -852,23 +852,23 @@ void MysqlDBOperation::decode_expr_tuple(stringstream& sm) {
         if (strcmp(str, "datetime") == 0) {
             ei_decode_tuple_header(buf_, &index_, &type_);
             ei_decode_tuple_header(buf_, &index_, &type_);
-            sm << " '" << decode_int();
+            sm << " \"" << decode_int();
             sm << "-" << decode_int();
             sm << "-" << decode_int();
             ei_decode_tuple_header(buf_, &index_, &type_);
             sm << " " << decode_int();
             sm << ":" << decode_int();
-            sm << ":" << decode_int() << "'";
+            sm << ":" << decode_int() << "\"";
         } else if (strcmp(str, "date") == 0) {
             ei_decode_tuple_header(buf_, &index_, &type_);
-            sm << " '" << decode_int();
+            sm << " \"" << decode_int();
             sm << "-" << decode_int();
-            sm << "-" << decode_int() << "'";
+            sm << "-" << decode_int() << "\"";
         } else if (strcmp(str, "time") == 0) {
              ei_decode_tuple_header(buf_, &index_, &type_);
-            sm << " '" << decode_int();
+            sm << " \"" << decode_int();
             sm << ":" << decode_int();
-            sm << ":" << decode_int() << "'";
+            sm << ":" << decode_int() << "\"";
         }
         free_string(str);
     } else {
