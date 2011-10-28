@@ -988,7 +988,7 @@ void OracleDBOperation::make_expr(stringstream& sql,
         case ERL_LIST_EXT:
         case ERL_NIL_EXT:
             decode_string_with_throw(cvalue);
-            sql << " '" << cvalue << "'";
+            sql << " \"" << cvalue << "\"";
             free_string(cvalue);
             break;
         case ERL_BINARY_EXT:
