@@ -8,3 +8,13 @@ Makefile
 Emakefile
 
 .DS_Store
+
+priv/database_drv.so
+
+*.o
+
+*.P
+
+*.beam
+
+doc/lib/*
