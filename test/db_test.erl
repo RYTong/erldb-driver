@@ -30,7 +30,6 @@
 
 -export([start/0,
          test/4,
-         test_pre/4,
          test_insert/3,
          test_delete/3,
          test_select/3,
@@ -45,13 +44,12 @@
 
 -export([db_test/3,
          db_worker/3,
-         c_simple_select/0,
          mysql_simple_select/0]).
 
 
--define(PoolId, ewp).
+-define(PoolId, erl_db).
 -define(TimeOut, 20000).
--define(ODBC_CONN_STRING, "DSN=MySQL-Test;UID=root;PWD=l1ghtp@l3").
+-define(ODBC_CONN_STRING, "DSN=MySQL-test").
 
 f(0, _Driver, _Action, _N_P, _N_T)->
     ok;
@@ -69,47 +67,58 @@ f(N, Driver, Action, N_P, N_T)->
     end,
     f(N-1, Driver, Action, N_P, N_T).
 
-start_both() ->
-    [Host, User, Password, Database, Poolsize] = ["localhost", "lpdba", "l1ghtp@l3", "test",16],
-    db_server:connect(mysql, [{driver, mysql},
-        {host, Host},
-        {user, User},
-        {password, Password},
-        {database, Database},
-        {poolsize, Poolsize}]),
-    start_mysql(Host, User, Password, Database, Poolsize).
-
-start_odbc() ->
-    odbc:start().
-
 start() ->
-    start(mysql).
+    ets:new(?MODULE, [public, named_table]),
+    
+    ConnArg = db_server:get_db_config(test),
+    start_db(ConnArg),
+    
+    % {ok, OdbcConn} = start_odbc(?ODBC_CONN_STRING, ?TimeOut),
+    % ets:insert(?MODULE, {odbc_conn, OdbcConn}),
+    
+    Host = proplists:get_value(host, ConnArg),
+    User = proplists:get_value(user, ConnArg),
+    Password = proplists:get_value(password, ConnArg),
+    Database = proplists:get_value(database, ConnArg),
+    Poolsize = proplists:get_value(poolsize, ConnArg),
+    start_mysql(?PoolId, Host, User, Password, Database, Poolsize).
 
-start(mysql) ->
-    db_server:connect(mysql, [{driver, mysql},
-        {host, "localhost"},
-        {user, "root"},
-        {password, ""},
-        {database, "test"},
-        {poolsize, 16}]);
-start(oracle) ->
-    db_server:connect(oracle, [{driver, mysql},
-        {host, ""},
-        {user, "system"},
-        {password, "wangmeigong"},
-        {database, "orcl"},
-        {poolsize, 16}]).
+start_db(ConnArg) ->
+    Pid = db_driver:start(),
+    {ok, ConnPool} = db_driver:connect(ConnArg),
+    ets:insert(?MODULE, {db_conn, ConnPool}),
+    ets:insert(?MODULE, {db_pid, Pid}).
 
-start_mysql(Host, User, Password, Database, Poolsize) ->
-    PoolId = ?PoolId,
+get_db_conn() ->
+    [{_, Conn}] = ets:lookup(?MODULE, db_conn),
+    Conn.
+
+start_db() ->
+    db_server:start(),
+    db_server:init_default(test).
+
+start_odbc(ConnString, Timeout) ->
+    odbc:start(),
+    odbc:connect(ConnString, [{timeout, Timeout}]).
+    
+start_mysql(PoolId, Host, User, Password, Database, Poolsize) ->
     mysql:start_link(PoolId, Host, User, Password, Database),
-    connect_mysql(PoolId, Host, User, Password, Database, Poolsize).
+    connect_mysql(PoolId, Host, User, Password, Database, Poolsize).    
 
 connect_mysql(PoolId, Host, User, Password, Database, 1) ->
     mysql:connect(PoolId, Host, undefined, User, Password, Database, true);
 connect_mysql(PoolId, Host, User, Password, Database, Poolsize) ->
     mysql:connect(PoolId, Host, undefined, User, Password, Database, true),
     connect_mysql(PoolId, Host, User, Password, Database, Poolsize - 1).
+
+stop() ->
+    % [{_, OdbcConn}] = ets:lookup(?MODULE, odbc_conn),
+    
+    ets:delete(?MODULE),
+    
+    db_server:stop().
+    
+    % odbc:disconnect(OdbcConn).
 
 timer_test_1() ->
     timer:start(),
@@ -141,24 +150,14 @@ test(Driver, Type, N_Pro, N_Times) ->
                   fun mysql_simple_update/0;
               mysql when Type == delete ->
                   fun mysql_simple_delete/0;
-              c when Type == select ->
-                  fun c_simple_select/0;
-              c when Type == insert ->
-                  fun c_simple_insert/0;
-              c when Type == update ->
-                  fun c_simple_update/0;
-              c when Type == delete ->
-                  fun c_simple_delete/0;
-              c when Type == prepare ->
-                  fun c_simple_prepare/0;
-              c1 when Type == select ->
-                  fun c1_simple_select/0;
-              c1 when Type == insert ->
-                  fun c1_simple_insert/0;
-              c1 when Type == update ->
-                  fun c1_simple_update/0;
-              c1 when Type == delete ->
-                  fun c1_simple_delete/0;
+              db when Type == select ->
+                  fun db_simple_select/0;
+              db when Type == insert ->
+                  fun db_simple_insert/0;
+              db when Type == update ->
+                  fun db_simple_update/0;
+              db when Type == delete ->
+                  fun db_simple_delete/0;
               odbc when Type == select ->
                   fun odbc_simple_select/0;
               odbc when Type == insert ->
@@ -182,10 +181,6 @@ test_update(Driver, N_Pro, N_Times) ->
 test_delete(Driver, N_Pro, N_Times) ->
     test(Driver, delete, N_Pro, N_Times).
 
-test_pre(Driver, N_Pro, N_Times, N_Pre) ->
-    [db_api:prepare(integer_to_list(I), "insert into user (name, age, gid) values(?, ?, ?)")||I<-lists:seq(1,N_Pre)],
-    test(Driver, prepare, N_Pro, N_Times),
-    [db_api:unprepare(integer_to_list(I))||I<-lists:seq(1,N_Pre)].
 
 db_test(N_Pro,N_Times, WorkFun) ->
     %    error_logger:format("work fun :~p~n",[WorkFun]),
@@ -259,27 +254,21 @@ odbc_query(Sql) ->
             {error, Err}
     end.
 
-c1_simple_select() ->
-    db_api:select(user, {name, '=', "haoboy"}).
-c_simple_select() ->
-    db_api:execute_sql("select * from user where name = 'haoboy'").
+db_simple_select() ->
+    db_driver:execute_sql(get_db_conn(), "select * from user where name = 'haoboy'").
 mysql_simple_select() ->
     mysql:fetch(?PoolId,"select * from user where name = 'haoboy'", ?TimeOut).
 odbc_simple_select() ->
     odbc_query("select * from user where name = 'haoboy'").
 
-c_simple_prepare() ->
-    %%PName = integer_to_list(random:uniform(10)),
-    db_api:prepare_execute("1", ["haoboy", 1, 2]).
-
 c1_simple_insert() ->
     random:seed(now()),
     Age = random:uniform(100),
     db_api:insert(user, [{name, "haoboy"}, {age, Age}, {gid, 1}]).
-c_simple_insert() ->
+db_simple_insert() ->
     random:seed(now()),
     Age = integer_to_list(random:uniform(100)),
-    db_api:execute_sql("insert into user(name,age,gid) values('haoboy'," ++ Age ++",1)").
+    db_driver:execute_sql(get_db_conn(), "insert into user(name,age,gid) values('haoboy'," ++ Age ++",1)").
 mysql_simple_insert() ->
     random:seed(now()),
     Age = integer_to_list(random:uniform(100)),
@@ -293,7 +282,7 @@ c1_simple_delete() ->
     random:seed(now()),
     Age = random:uniform(100),
     db_api:delete(user, {age, '=', Age}).
-c_simple_delete() ->
+db_simple_delete() ->
     random:seed(now()),
     Age = integer_to_list(random:uniform(100)),
     db_api:execute_sql("delete from user where age = " ++ Age).
@@ -310,7 +299,7 @@ c1_simple_update() ->
     random:seed(now()),
     Age = random:uniform(100),
     db_api:update(user, [{name, "caoxu"}], {age, '=', Age}).
-c_simple_update() ->
+db_simple_update() ->
     random:seed(now()),
     Age = integer_to_list(random:uniform(100)),
     db_api:execute_sql("update user set name='caoxu' where age = "++Age).
