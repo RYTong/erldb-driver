@@ -18,7 +18,9 @@ AC_MSG_CHECKING([MySQL headers])
 MYSQL_INCL=""
 for d in \
   /usr/include/mysql \
+  /usr/include \
   /usr/local/include/mysql \
+  /usr/local/include \
   /usr/local/mysql/include \
   /opt/local/include/mysql \
   /opt/local/include/mysql5/mysql \

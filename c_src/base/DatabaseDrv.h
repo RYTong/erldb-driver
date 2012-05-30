@@ -98,8 +98,8 @@ public:
      *  @param return buf length.
      *  @return If success.
      */
-    static int control(ErlDrvData drv_data, unsigned int command, char *buf,
-            int len, char **rbuf, int rlen);
+    static ErlDrvSSizeT control(ErlDrvData drv_data, unsigned int command, char *buf,
+            ErlDrvSizeT len, char **rbuf, ErlDrvSizeT rlen);
 
 
     /** @brief Call do_async fo thr_pool_ to process the drv data.
