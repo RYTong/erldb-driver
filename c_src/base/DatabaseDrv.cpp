@@ -204,8 +204,8 @@ void DatabaseDrv::finish() {
     SysLogger::close();
 }
 
-int DatabaseDrv::control(ErlDrvData handle, unsigned int command, char *buf,
-    int len, char **rbuf, int rlen) {
+ErlDrvSSizeT DatabaseDrv::control(ErlDrvData handle, unsigned int command, char *buf,
+    ErlDrvSizeT len, char **rbuf, ErlDrvSizeT rlen) {
     DrvData *data = (DrvData *) handle;
     int i = 0, size = 0, index = 0, version = 0;
     DatabaseDrv* instance = NULL;

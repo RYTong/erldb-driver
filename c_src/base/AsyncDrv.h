@@ -28,6 +28,16 @@
 #include <iostream>
 #include "base/ThreadPool.h"
 
+/*
+* R15B changed several driver callbacks to use ErlDrvSizeT and
+* ErlDrvSSizeT typedefs instead of int.
+* This provides missing typedefs on older OTP versions.
+*/
+#if ERL_DRV_EXTENDED_MAJOR_VERSION < 2
+typedef int ErlDrvSizeT;
+typedef int ErlDrvSSizeT;
+#endif
+
 // lib
 #include "EiEncoder.h"
 #include "debug.h"
