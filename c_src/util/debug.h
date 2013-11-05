@@ -36,7 +36,6 @@ namespace rytong {
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <execinfo.h>
 
 #ifdef NDEBUG
 #define rabort(str)

@@ -26,6 +26,8 @@
 #include <stdarg.h>
 #include "SysLogger.h"
 
+#define MESSAGE_LENGTH 1024
+
 using namespace rytong;
 
 SysLogger::SysLogger() {
@@ -43,52 +45,66 @@ void SysLogger::close() {
 }
 
 void SysLogger::info(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_INFO, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_INFO, "%s", tmp);
     va_end(ap);
 }
 
 void SysLogger::debug(const char *format, ...) {
 #ifdef DEBUG
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_DEBUG, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_DEBUG, "%s", tmp);
     va_end(ap);
 #endif
 }
 
 void SysLogger::notice(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_NOTICE, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_INFO, "%s", tmp);
     va_end(ap);
 }
 
 void SysLogger::warning(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_WARNING, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_INFO, "%s", tmp);
     va_end(ap);
 }
 
 void SysLogger::error(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_ERR, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_ERR, "%s", tmp);
     va_end(ap);
 }
 
 void SysLogger::crit(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_CRIT, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_CRIT, "%s", tmp);
     va_end(ap);
 }
 
 void SysLogger::alert(const char *format, ...) {
+    char tmp[MESSAGE_LENGTH];
     va_list ap;
     va_start(ap, format);
-    vsyslog(LOG_ALERT, format, ap);
+    vsnprintf(tmp, MESSAGE_LENGTH, format, ap);
+    syslog(LOG_ALERT, "%s", tmp);
     va_end(ap);
 }

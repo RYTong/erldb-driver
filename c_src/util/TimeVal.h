@@ -25,6 +25,7 @@
 #define _RYT_TIMEVAL_H
 
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <iomanip>
@@ -34,6 +35,7 @@
 #include <cmath>
 #include <strings.h>
 #include <limits.h>
+#include "EWPString.h"
 
 using namespace std;
 
@@ -79,7 +81,7 @@ public:
 
     TimeVal& parse(const char* in_str) {
         char* str = new char[strlen(in_str) + 1];
-        strcpy(str, in_str);
+        ewp_strcpy(str, in_str);
         char* p = index(str, '.');
         if (p != NULL) {
             *p++ = '\0';

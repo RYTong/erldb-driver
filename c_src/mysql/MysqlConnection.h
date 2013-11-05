@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -27,8 +27,8 @@
 #define _RYT_MYSQL_CONNECTION_H
 
 #include <mysql.h>
-#include "base/Connection.h"
-#include "SysLogger.h"
+#include "../base/Connection.h"
+#include "../util/SysLogger.h"
 
 namespace rytong{
 /** @brief Mysql connection class.
@@ -39,7 +39,7 @@ public:
      *  @return None.
      */
     MysqlConnection();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -64,6 +64,7 @@ public:
      */
     bool disconnect() {
         if (conn_) {
+            mysql_ping(conn_);
             mysql_close(conn_);
             conn_ = NULL;
         }

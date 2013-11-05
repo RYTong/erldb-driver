@@ -23,15 +23,21 @@
  *  @date Fri Nov 13 14:36:14 CST 2009
  */
 
-#include "base/Connection.h"
+#include "Connection.h"
 #ifdef USE_MYSQL
-#include "mysql/MysqlConnection.h"
+#include "../mysql/MysqlConnection.h"
 #endif
 #ifdef USE_ORACLE
-#include "oracle/OracleConnection.h"
+#include "../oracle/OracleConnection.h"
 #endif
 #ifdef USE_SYBASE
-#include "sybase/SybConnection.h"
+#include "../sybase/SybConnection.h"
+#endif
+#ifdef USE_DB2
+#include "../DB2/DB2Connection.h"
+#endif
+#ifdef USE_INFORMIX
+#include "../informix/InformixConnection.h"
 #endif
 
 using namespace rytong;
@@ -58,6 +64,16 @@ Connection* Connection::create(DatabaseType db_type) {
 #ifdef USE_SYBASE
         case SYBASE_DB:
             conn = new SybConnection();
+            break;
+#endif
+#ifdef USE_DB2
+        case DB2_DB:
+            conn = new DB2Connection();
+            break;
+#endif
+#ifdef USE_INFORMIX
+        case INFORMIX_DB:
+            conn = new InformixConnection();
             break;
 #endif
         default:

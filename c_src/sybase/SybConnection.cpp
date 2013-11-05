@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -29,6 +29,7 @@ CS_CONTEXT* SybConnection::sContext_ = NULL;
 SybConnection::SybConnection() {
     conn_ = NULL;
     stmt_ = NULL;
+    set_db_type(SYBASE_DB);
 }
 
 SybConnection::~SybConnection() {
@@ -54,19 +55,26 @@ bool SybConnection::connect(const char *host, const char *user,
     bool retcode;
     char addr[50];
     char cmd[128];
+    bool use_server_name = false;
 
     if (strlen(host) > 30) {
         return false;
     }
-    sprintf(addr, "%s %u", host, port);
-    
+
+    if (port == 0) {
+        sprintf(addr, "%s", host);
+        use_server_name = true;
+    } else {
+        sprintf(addr, "%s %u", host, port);
+    }
+
     if (sContext_ == NULL) {
         if (init_() != CS_SUCCEED) {
             return false;
         }
     }
 
-    if (connect_("ewp_sybase_drv", NULL, user, password, db_name)!=CS_SUCCEED) {
+    if (connect_("ewp_sybase_drv", addr, user, password, db_name, use_server_name)!=CS_SUCCEED) {
         return false;
     }
 
@@ -86,9 +94,9 @@ bool SybConnection::connect(const char *host, const char *user,
             return false;
         }
     }
-    
+
     limit_row_count_ = 0;
-    
+
     return true;
 }
 
@@ -180,7 +188,7 @@ CS_RETCODE SybConnection::init_()
 }
 
 CS_RETCODE SybConnection::connect_(const char *app, const char *addr,
-        const char *user, const char *pwd, const char *db)
+        const char *user, const char *pwd, const char *db, bool use_server_name)
 {
     CS_RETCODE retcode;
     CS_BOOL hafailover = CS_TRUE;
@@ -205,7 +213,7 @@ CS_RETCODE SybConnection::connect_(const char *app, const char *addr,
     }
 
     // If a servername is defined, set the CS_SERVERNAME property.
-    if (addr != NULL) {
+    if (use_server_name == false && addr != NULL) {
         retcode = ct_con_props(conn_, CS_SET, CS_SERVERADDR,
                 (CS_VOID*)addr, CS_NULLTERM, NULL);
         if (retcode != CS_SUCCEED) {
@@ -251,9 +259,15 @@ CS_RETCODE SybConnection::connect_(const char *app, const char *addr,
     }
 
     // Connect to the server.
-    retcode = ct_connect(conn_, NULL, CS_UNUSED);
+    if (true == use_server_name) {
+        CS_INT server_name_length = strlen(addr);
+        retcode = ct_connect(conn_, (CS_CHAR *)addr, server_name_length);
+    } else {
+        retcode = ct_connect(conn_, NULL, CS_UNUSED);
+    }
     if (retcode != CS_SUCCEED) {
         SysLogger::error("connect_: ct_connect() failed");
+        // cout << "\rconnect_: ct_connect() failed:" << retcode << endl;
         ct_con_drop(conn_);
         conn_ = NULL;
         return retcode;

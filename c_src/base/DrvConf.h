@@ -35,14 +35,14 @@ enum DatabaseType {
     MYSQL_DB = 0,   ///< Mysql flag.
     ORACLE_DB = 1,  ///< Oracle flag.
     SYBASE_DB = 2,  ///< Sybase flag.
-    DB2_DB = 3      ///< DB2 flag.
+    DB2_DB = 3,     ///< DB2 flag.
+    INFORMIX_DB = 4 ///< Informix flag.
 };
 
 /** @brief struct DrvConf.
  */
 typedef struct {
     unsigned long long thread_len;      ///< Thread length.
-    unsigned long long max_thread_len;  ///< Max thread length..
     unsigned long long max_queue_len;   ///< Max data queue length.
     DatabaseType db_type;       ///< Database type.
     char host[ARG_LENGTH];      ///< Database host.
@@ -51,6 +51,7 @@ typedef struct {
     char db_name[ARG_LENGTH];   ///< Database name.
     unsigned int port;          ///< Database port.
     int poolsize;               ///< The size of connection pool.
+    int trans_poolsize;         ///< The size of connection poll for transactions.
 } DrvConf;
 
 }

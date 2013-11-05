@@ -21,11 +21,10 @@
  *  @date Created on 2010-2-3
  */
 
-#include "oracle/OracleDBOperation.h"
-#include "base/ConnectionPool.h"
-#include "EiEncoder.h"
+#include "OracleDBOperation.h"
+#include "../base/ConnectionPool.h"
+#include "../util/EiEncoder.h"
 
-static const char* CONN_NULL_ERROR = "fail to get conn";
 static const char* STMT_NULL_ERROR = "fail to get stmt";
 
 using namespace oracle::occi;
@@ -51,30 +50,48 @@ Environment* OracleDBOperation::get_env_instance() {
 
 bool OracleDBOperation::exec(ei_x_buff * const res) {
     char* sql = NULL;
+    char* param = NULL;
     Statement* stmt = NULL;
     ResultSet* rset = NULL;
     oracle::occi::Connection* conn = NULL;
+    int type;
 
     try {
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
+        conn = (oracle::occi::Connection*) conn_->get_connection();
+        type = get_erl_type();
+        if (type == ERL_SMALL_TUPLE_EXT || type == ERL_LARGE_TUPLE_EXT) {
+            decode_tuple_header();
+            decode_string_with_throw(sql);
+            stmt = conn->createStatement(sql);
+            type = get_erl_type();
+            if (type == ERL_LIST_EXT) {
+                long param_count = decode_list_header();
+                for (long i = 0; i < param_count; i++) {
+                    decode_and_set_param(stmt, (unsigned int)(i + 1));
+                }
+            } else {
+                decode_string_with_throw(param);
+                for (unsigned int i = 1; i <= strlen(param); ++i) {
+                    Number number((int) param[i - 1]);
+                    stmt->setNumber(i, number);
+                }
+                free_string(param);
+            }
+        } else {
+            decode_string_with_throw(sql);
+            stmt = conn->createStatement(sql);
         }
 
-        decode_string_with_throw(sql);
-
-        conn = (oracle::occi::Connection*) conn_->get_connection();
-        stmt = conn->createStatement(sql);
-
-        if (is_query(sql)) {
+        if (((OracleConnection*) conn_)->get_auto_commit()) {
+            stmt->setAutoCommit(true);
+        }
+        if (ewp_strcmp(sql, "test") == 0) {
+            usleep(500);
+            EiEncoder::encode_ok_number(1, res);
+        } else if (is_query(sql)) {
             query(stmt, rset, res);
         } else {
-            if (((OracleConnection*) conn_)->get_auto_commit()) {
-                stmt->setAutoCommit(true);
-            }
-
             stmt->executeUpdate();
-
             EiEncoder::encode_ok_number(stmt->getUpdateCount(), res);
         }
     } catch (SQLException& ex) {
@@ -85,13 +102,10 @@ bool OracleDBOperation::exec(ei_x_buff * const res) {
         SysLogger::error("Exception thrown for exec\n\r%s", ex.what());
         EiEncoder::encode_error_msg(ex.what(), res);
     }
-
     free_string(sql);
-
     if (rset != NULL) {
         stmt->closeResultSet(rset);
     }
-
     if (stmt != NULL) {
         conn->terminateStatement(stmt);
     }
@@ -100,70 +114,195 @@ bool OracleDBOperation::exec(ei_x_buff * const res) {
 }
 
 bool OracleDBOperation::trans_begin(ei_x_buff * const res) {
-    rytong::Connection* conn = (rytong::Connection*) conn_;
-    OracleConnection* oracle_conn = (OracleConnection*) conn;
+    bool retcode = true;
+    try {
+        rytong::Connection* conn = (rytong::Connection*) conn_;
+        OracleConnection* oracle_conn = (OracleConnection*) conn;
+        oracle_conn->set_auto_commit(false);
+        EiEncoder::encode_ok_pointer((void*) conn, res);
+    } catch (SQLException& ex) {
+        SysLogger::error("Exception thrown for trans_begin\n\rError number:%d\n\r%s",
+                ex.getErrorCode(), ex.getMessage().c_str());
+        EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+        retcode = false;
+    } catch (exception& ex) {
+        SysLogger::error("Exception thrown for trans_begin\n\r%s", ex.what());
+        EiEncoder::encode_error_msg(ex.what(), res);
+        retcode = false;
+    }
 
-    oracle_conn->set_auto_commit(false);
-
-    EiEncoder::encode_ok_pointer((void*) conn, res);
-
-    return true;
+    return retcode;
 }
 
 bool OracleDBOperation::trans_commit(ei_x_buff * const res) {
-    const char * sql = "COMMIT";
-    oracle::occi::Connection* conn = NULL;
-
+    bool retcode = true;
     try {
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
-
-        conn = (oracle::occi::Connection*) conn_->get_connection();
+        oracle::occi::Connection* conn =
+                (oracle::occi::Connection*) conn_->get_connection();
         conn->commit();
-
-        EiEncoder::encode_ok_msg(sql, res);
-
-        OracleConnection* oracle_conn = (OracleConnection*) conn_;
-        oracle_conn->set_auto_commit(true);
+        ((OracleConnection*)conn_)->set_auto_commit(true);
+        EiEncoder::encode_ok_msg("COMMIT", res);
     } catch (SQLException& ex) {
         SysLogger::error("Exception thrown for trans_commit\n\rError number:%d\n\r%s",
                 ex.getErrorCode(), ex.getMessage().c_str());
         EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+        retcode = false;
     } catch (exception& ex) {
         SysLogger::error("Exception thrown for trans_commit\n\r%s", ex.what());
         EiEncoder::encode_error_msg(ex.what(), res);
+        retcode = false;
     }
 
-    return true;
+    return retcode;
 }
 
 bool OracleDBOperation::trans_rollback(ei_x_buff * const res) {
-    const char * sql = "ROLLBACK";
-    oracle::occi::Connection* conn = NULL;
-
+    bool retcode = true;
     try {
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
-
-        conn = (oracle::occi::Connection*) conn_->get_connection();
+        oracle::occi::Connection* conn =
+                (oracle::occi::Connection*) conn_->get_connection();
         conn->rollback();
-
-        EiEncoder::encode_ok_msg(sql, res);
-
-        OracleConnection* oracle_conn = (OracleConnection*) conn;
-        oracle_conn->set_auto_commit(true);
+        ((OracleConnection*)conn_)->set_auto_commit(true);
+        EiEncoder::encode_ok_msg("ROLLBACK", res);
     } catch (SQLException& ex) {
         SysLogger::error("Exception thrown for trans_rollback\n\rError number:%d\n\r%s",
                 ex.getErrorCode(), ex.getMessage().c_str());
         EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+        retcode = false;
     } catch (exception& ex) {
         SysLogger::error("Exception thrown for trans_rollback\n\r%s", ex.what());
         EiEncoder::encode_error_msg(ex.what(), res);
+        retcode = false;
     }
+
+    return retcode;
+}
+
+bool OracleDBOperation::prepare_statement_init(ei_x_buff * const res) {
+    char *sql = NULL;
+    Statement* stmt = NULL;
+    oracle::occi::Connection* conn = NULL;
+
+    try {
+        decode_string_with_throw(sql);
+
+        conn = (oracle::occi::Connection*) conn_->get_connection();
+        stmt = conn->createStatement(sql);
+
+        if (((OracleConnection*) conn_)->get_auto_commit()) {
+            stmt->setAutoCommit(true);
+        }
+
+        EiEncoder::encode_ok_pointer(stmt, res);
+    } catch (SQLException& ex) {
+        SysLogger::error("Exception thrown for prepare_stat_init\n\rError number:%d\n\r%s",
+                ex.getErrorCode(), ex.getMessage().c_str());
+        EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+        if (stmt != NULL) {
+            conn->terminateStatement(stmt);
+        }
+
+        EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+    } catch (exception& ex) {
+        if (stmt != NULL) {
+            conn->terminateStatement(stmt);
+        }
+        SysLogger::error("Exception thrown for prepare_stat_init\n\r%s", ex.what());
+        EiEncoder::encode_error_msg(ex.what(), res);
+    }
+
+    free_string(sql);
+
+    return true;
+}
+
+bool OracleDBOperation::prepare_statement_exec(ei_x_buff * const res) {
+    // char* prepare_name = NULL;
+    char* param = NULL;
+    Statement* stmt = NULL;
+    ResultSet* rset = NULL;
+
+    try {
+        decode_tuple_header();
+        // decode_string_with_throw(prepare_name);
+        ei_decode_binary(buf_, &index_, &stmt, &bin_size_);
+
+        // stmt = (Statement*) stmt_map_->get(prepare_name);
+        if (stmt == NULL) {
+            DBException ex(STMT_NULL_ERROR);
+            throw ex;
+        }
+        int type = get_erl_type();
+
+        if (type == ERL_LIST_EXT) {
+            long param_count = decode_list_header();
+
+            for (long i = 0; i < param_count; i++) {
+                decode_and_set_param(stmt, (unsigned int)(i + 1));
+            }
+        } else {
+            decode_string_with_throw(param);
+            for (unsigned int i = 1; i <= strlen(param); ++i) {
+                Number number((int) param[i - 1]);
+                stmt->setNumber(i, number);
+            }
+        }
+        if (is_query(stmt->getSQL().c_str())) {
+            query(stmt, rset, res);
+        } else {
+            if (((OracleConnection*) conn_)->get_auto_commit()) {
+                stmt->setAutoCommit(true);
+            }
+
+            stmt->executeUpdate();
+
+            EiEncoder::encode_ok_number(stmt->getUpdateCount(), res);
+        }
+
+        if (rset != NULL) {
+            stmt->closeResultSet(rset);
+        }
+    } catch (SQLException& ex) {
+        SysLogger::error("Exception thrown for prepare_stat_exec\n\rError number:%d\n\r%s",
+                ex.getErrorCode(), ex.getMessage().c_str());
+        EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+    } catch (exception& ex) {
+        SysLogger::error("Exception thrown for prepare_stat_exec\n\r%s", ex.what());
+        EiEncoder::encode_error_msg(ex.what(), res);
+    }
+
+    // free_string(prepare_name);
+    free_string(param);
+
+    return true;
+}
+
+bool OracleDBOperation::prepare_statement_release(ei_x_buff * const res) {
+    // char* prepare_name = NULL;
+    Statement* stmt = NULL;
+    try {
+        // decode_string_with_throw(prepare_name);
+        ei_decode_binary(buf_, &index_, &stmt, &bin_size_);
+        // Statement* stmt = (Statement*) stmt_map_->remove(string(prepare_name));
+        if (stmt == NULL) {
+            DBException ex(STMT_NULL_ERROR);
+            throw ex;
+        }
+
+        oracle::occi::Connection* conn = stmt->getConnection();
+        conn->terminateStatement(stmt);
+
+        EiEncoder::encode_ok_msg("close stmt", res);
+    } catch (SQLException& ex) {
+        SysLogger::error("Exception thrown for prepare_stat_release\n\rError number:%d\n\r%s",
+                ex.getErrorCode(), ex.getMessage().c_str());
+        EiEncoder::encode_error_msg(ex.getMessage().c_str(), res);
+    } catch (exception& ex) {
+        SysLogger::error("Exception thrown for prepare_stat_release\n\r%s", ex.what());
+        EiEncoder::encode_error_msg(ex.what(), res);
+    }
+
+    // free_string(prepare_name);
 
     return true;
 }
@@ -178,11 +317,6 @@ bool OracleDBOperation::prepare_stat_init(ei_x_buff * const res) {
         decode_tuple_header();
         decode_string_with_throw(prepare_name);
         decode_string_with_throw(sql);
-
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
 
         conn = (oracle::occi::Connection*) conn_->get_connection();
         stmt = conn->createStatement(sql);
@@ -314,17 +448,12 @@ bool OracleDBOperation::insert(ei_x_buff * const res) {
     stringstream sql, tmp;
     char* table_name = NULL;
     char* field_name = NULL;
-    Statement* stmt = NULL;
+    Statement* stmt  = NULL;
     oracle::occi::Connection* conn = NULL;
 
     try {
         decode_tuple_header();
         decode_string_with_throw(table_name);
-
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
 
         sql << "INSERT INTO " << table_name << " (";
         tmp << " VALUES(";
@@ -396,11 +525,6 @@ bool OracleDBOperation::update(ei_x_buff * const res) {
     try {
         decode_tuple_header();
         decode_string_with_throw(table_name);
-
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
 
         sql << "UPDATE " << table_name << " SET";
 
@@ -480,11 +604,6 @@ bool OracleDBOperation::del(ei_x_buff * const res) {
         decode_tuple_header();
         decode_string_with_throw(table_name);
 
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
-
         sql << "DELETE FROM " << table_name;
 
         int type = get_erl_type();
@@ -535,27 +654,19 @@ bool OracleDBOperation::select(ei_x_buff * const res) {
     oracle::occi::Connection* conn = NULL;
 
     try {
-        if (conn_ == NULL) {
-            DBException ex(CONN_NULL_ERROR);
-            throw ex;
-        }
-
-        long distinct;
-
+        long distinct = 0;
         decode_tuple_header();
-
         if (!decode_integer(distinct)) {
             DBException ex(BAD_ARG_ERROR);
             throw ex;
         }
-
         sql << ((0 == distinct) ? "SELECT" : "SELECT DISTINCT");
 
         /* decode select field*/
         int type = get_erl_type();
-
         if (type != ERL_LIST_EXT) {
             sql << " *";
+            skip_term();
         } else {
             int num_field = decode_list_header();
 
@@ -565,22 +676,18 @@ bool OracleDBOperation::select(ei_x_buff * const res) {
                     sql << " ,";
                 }
             }
-
             decode_empty_list();
         }
 
         /* decode table list*/
         sql << " FROM";
-
         int num_table = decode_list_header();
-
         for (int i = 0; i < num_table; ++i) {
             make_expr(sql, param_index);
             if (i < num_table - 1) {
                 sql << " ,";
             }
         }
-
         decode_empty_list();
 
         /* decode where expr*/
@@ -594,7 +701,6 @@ bool OracleDBOperation::select(ei_x_buff * const res) {
 
         /* decode extras*/
         type = get_erl_type();
-
         if (type == ERL_LIST_EXT) {
             int num_extra = decode_list_header();
 
@@ -605,6 +711,7 @@ bool OracleDBOperation::select(ei_x_buff * const res) {
         }
 
         conn = (oracle::occi::Connection*) conn_->get_connection();
+        SysLogger::debug("sql:%s\n\r", sql.str().c_str());
         stmt = conn->createStatement(sql.str());
 
         if (((OracleConnection*) conn_)->get_auto_commit()) {
@@ -767,19 +874,22 @@ int OracleDBOperation::get_data_type(int* p_index) {
     int type = -1;
     char* type_str = NULL;
     switch(get_erl_type(p_index)) {
+        case ERL_NIL_EXT:
+            type = EMPTY;
+            break;
         case ERL_SMALL_TUPLE_EXT:
         case ERL_LARGE_TUPLE_EXT:
             decode_tuple_header(p_index);
             if (decode_string(type_str, p_index)) {
-                if (strcmp(type_str, "datetime") == 0) {
+                if (ewp_strcmp(type_str, "datetime") == 0) {
                     type = DATE;
-                } else if (strcmp(type_str, "timestamp") == 0) {
+                } else if (ewp_strcmp(type_str, "timestamp") == 0) {
                     type = TIMESTAMP;
-                } else if (strcmp(type_str, "interval_ym") == 0) {
+                } else if (ewp_strcmp(type_str, "interval_ym") == 0) {
                     type = INTERVAL_YM;
-                } else if (strcmp(type_str, "interval_ds") == 0) {
+                } else if (ewp_strcmp(type_str, "interval_ds") == 0) {
                     type = INTERVAL_DS;
-                } else if (strcmp(type_str, "bfile") == 0) {
+                } else if (ewp_strcmp(type_str, "bfile") == 0) {
                     type = BFILEE;
                 }
             }
@@ -822,6 +932,9 @@ void OracleDBOperation::decode_and_set_param(Statement* stmt,
     int type = get_data_type(p_index);
 
     switch (type) {
+        case EMPTY:
+            decode_and_set_empty(stmt, index, p_index);
+            break;
         case STRING:
             decode_and_set_string(stmt, index, p_index);
             break;
@@ -873,83 +986,89 @@ void OracleDBOperation::make_expr(stringstream& sql,
                 if (decode_integer(key_word, &index)) {
                     index_ = index;
                     switch (key_word) {
-                        case SQL_AND:
+                        case DB_DRV_SQL_AND:
                             make_and(sql, param_index);
                             break;
-                        case SQL_OR:
+                        case DB_DRV_SQL_OR:
                             make_or(sql, param_index);
                             break;
-                        case SQL_NOT:
+                        case DB_DRV_SQL_NOT:
                             make_not(sql, param_index);
                             break;
-                        case SQL_LIKE:
+                        case DB_DRV_SQL_LIKE:
                             make_like(sql, param_index);
                             break;
-                        case SQL_AS:
+                        case DB_DRV_SQL_AS:
                             make_as(sql, param_index);
                             break;
-                        case SQL_EQUAL:
+                        case DB_DRV_SQL_EQUAL:
                             make_equal(sql, param_index);
                             break;
-                        case SQL_GREATER:
+                        case DB_DRV_SQL_GREATER:
                             make_greater(sql, param_index);
                             break;
-                        case SQL_GREATER_EQUAL:
+                        case DB_DRV_SQL_GREATER_EQUAL:
                             make_greater_equal(sql, param_index);
                             break;
-                        case SQL_LESS:
+                        case DB_DRV_SQL_LESS:
                             make_less(sql, param_index);
                             break;
-                        case SQL_LESS_EQUAL:
+                        case DB_DRV_SQL_LESS_EQUAL:
                             make_less_equal(sql, param_index);
                             break;
-                        case SQL_JOIN:
+                        case DB_DRV_SQL_JOIN:
                             make_join(sql, param_index);
                             break;
-                        case SQL_LEFT_JOIN:
+                        case DB_DRV_SQL_LEFT_JOIN:
                             make_left_join(sql, param_index);
                             break;
-                        case SQL_RIGHT_JOIN:
+                        case DB_DRV_SQL_RIGHT_JOIN:
                             make_right_join(sql, param_index);
                             break;
-                        case SQL_NOT_EQUAL:
+                        case DB_DRV_SQL_NOT_EQUAL:
                             make_not_equal(sql, param_index);
                             break;
-                        case SQL_ORDER:
+                        case DB_DRV_SQL_ORDER:
                             make_order(sql, param_index);
                             break;
-                        case SQL_LIMIT:
+                        case DB_DRV_SQL_LIMIT:
                             make_limit(sql, param_index);
                             break;
-                        case SQL_DOT:
+                        case DB_DRV_SQL_DOT:
                             make_dot(sql, param_index);
                             break;
-                        case SQL_GROUP:
+                        case DB_DRV_SQL_GROUP:
                             make_group(sql, param_index);
                             break;
-                        case SQL_HAVING:
+                        case DB_DRV_SQL_HAVING:
                             make_having(sql, param_index);
                             break;
-                        case SQL_BETWEEN:
+                        case DB_DRV_SQL_BETWEEN:
                             make_between(sql, param_index);
                             break;
-                        case SQL_ADD:
+                        case DB_DRV_SQL_ADD:
                             make_add(sql, param_index);
                             break;
-                        case SQL_SUB:
+                        case DB_DRV_SQL_SUB:
                             make_sub(sql, param_index);
                             break;
-                        case SQL_MUL:
+                        case DB_DRV_SQL_MUL:
                             make_mul(sql, param_index);
                             break;
-                        case SQL_DIV:
+                        case DB_DRV_SQL_DIV:
                             make_div(sql, param_index);
                             break;
-                        case SQL_FUN:
+                        case DB_DRV_SQL_FUN:
                             make_fun(sql, param_index);
                             break;
-                        case SQL_INNER_JOIN:
+                        case DB_DRV_SQL_INNER_JOIN:
                             make_inner_join(sql, param_index);
+                            break;
+                        case DB_DRV_SQL_IS_NULL:
+                            make_is_null(sql, param_index);
+                            break;
+                        case DB_DRV_SQL_IS_NOT_NULL:
+                            make_is_not_null(sql, param_index);
                             break;
                         default:
                             throw ex;
@@ -988,7 +1107,7 @@ void OracleDBOperation::make_expr(stringstream& sql,
         case ERL_LIST_EXT:
         case ERL_NIL_EXT:
             decode_string_with_throw(cvalue);
-            sql << " \"" << cvalue << "\"";
+            sql << " \'" << cvalue << "\'";
             free_string(cvalue);
             break;
         case ERL_BINARY_EXT:

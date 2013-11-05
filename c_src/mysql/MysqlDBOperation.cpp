@@ -23,9 +23,9 @@
  *  @date Created on 2010-1-31
  */
 
-#include "mysql/MysqlDBOperation.h"
-#include "base/ConnectionPool.h"
-#include "EiEncoder.h"
+#include "MysqlDBOperation.h"
+#include "../base/ConnectionPool.h"
+#include "../util/EiEncoder.h"
 
 using namespace rytong;
 
@@ -157,6 +157,65 @@ bool MysqlDBOperation::trans_rollback(ei_x_buff * const res) {
     return false;
 }
 
+bool MysqlDBOperation::prepare_statement_init(ei_x_buff * const res) {
+    char * sql = NULL;
+    decode_string(sql);
+    if (NULL == conn_) {
+        EiEncoder::encode_error_msg(CONN_NULL_ERROR, res);
+    } else {
+        MYSQL* db_conn = (MYSQL*) (conn_->get_connection());
+        MYSQL_STMT* mysql_stmt = mysql_stmt_init(db_conn);
+        if (!mysql_stmt) {
+            EiEncoder::encode_error_msg("mysql_stmt_init(), out of memory", res);
+        } else {
+            if (mysql_stmt_prepare(mysql_stmt, sql, strlen(sql))) {
+                EiEncoder::encode_error_msg(mysql_stmt_error(mysql_stmt), res);
+            } else {
+                StmtData* stmt_data = new StmtData;
+                stmt_data->stmt = mysql_stmt;
+                stmt_data->meta_data = mysql_stmt_result_metadata(mysql_stmt);
+                EiEncoder::encode_ok_pointer(stmt_data, res);
+            }
+        }
+    }
+
+    // free_string(prepare_name);
+    free_string(sql);
+    return true;
+}
+
+bool MysqlDBOperation::prepare_statement_exec(ei_x_buff * const res) {
+    StmtData* stmt_data = NULL;
+    FieldValue * stmt_fields = NULL;
+    ei_decode_tuple_header(buf_, &index_, &type_);
+    ei_decode_binary(buf_, &index_, &stmt_data, &bin_size_);
+    int len = decode_stmt_fields(stmt_fields);
+
+    if (stmt_data == NULL) {
+        EiEncoder::encode_error_msg("failed to get stmt data", res);
+    } else {
+        exec_stmt(stmt_data, stmt_fields, res);
+    }
+
+    free_stmt_fields(stmt_fields, len);
+    return true;
+}
+
+/** perpare statement release interface  */
+bool MysqlDBOperation::prepare_statement_release(ei_x_buff * const res) {
+    StmtData* stmt_data = NULL;
+    ei_decode_binary(buf_, &index_, &stmt_data, &bin_size_);
+    if (NULL == stmt_data) {
+        EiEncoder::encode_error_msg("failed to get stmt data", res);
+    } else {
+        mysql_free_result((MYSQL_RES*)stmt_data->meta_data);
+        mysql_stmt_close((MYSQL_STMT*)stmt_data->stmt);
+        delete stmt_data;
+        EiEncoder::encode_ok_msg("close stmt", res);
+    }
+    return true;
+}
+
 /** perpare statement init interface  */
 bool MysqlDBOperation::prepare_stat_init(ei_x_buff * const res) {
     char * prepare_name = NULL;
@@ -217,9 +276,28 @@ bool MysqlDBOperation::prepare_stat_exec(ei_x_buff * const res) {
     return true;
 }
 
+/** perpare statement release interface  */
+bool MysqlDBOperation::prepare_stat_release(ei_x_buff * const res) {
+    char * prepare_name = NULL;
+    decode_string(prepare_name);
+    StmtData* stmt_data = (StmtData*)stmt_map_->remove(string(prepare_name));
+    if (NULL == stmt_data) {
+        EiEncoder::encode_error_msg("failed to get stmt data", res);
+    } else {
+        mysql_free_result((MYSQL_RES*)stmt_data->meta_data);
+        mysql_stmt_close((MYSQL_STMT*)stmt_data->stmt);
+        delete stmt_data;
+        EiEncoder::encode_ok_msg("close stmt", res);
+    }
+    free_string(prepare_name);
+    return true;
+}
+
 void MysqlDBOperation::exec_stmt(StmtData* stmt_data, FieldValue* stmt_fields,
         ei_x_buff * const res) {
     MYSQL_STMT* stmt = (MYSQL_STMT*)stmt_data->stmt;
+    // MYSQL* db_conn = (MYSQL*) (conn_->get_connection());
+    // MYSQL_STMT* stmt = mysql_stmt_init(db_conn);
     unsigned long param_count = mysql_stmt_param_count(stmt);
 
     if (0 == param_count) {
@@ -392,9 +470,7 @@ void MysqlDBOperation::encode_stmt_result(StmtData* stmt_data,
         return;
     }
     unsigned long long row_count = mysql_stmt_num_rows(stmt);
-    if (row_count < 0) {
-        EiEncoder::encode_error_msg(mysql_stmt_error(stmt), res);
-    } else if (0 == row_count) {
+    if (0 == row_count) {
         EiEncoder::encode_ok_msg("", res);
     } else {
         ei_x_new_with_version(res);
@@ -496,31 +572,24 @@ void MysqlDBOperation::encode_stmt_result(StmtData* stmt_data,
     delete [] bind;
 }
 
-/** perpare statement release interface  */
-bool MysqlDBOperation::prepare_stat_release(ei_x_buff * const res) {
-    char * prepare_name = NULL;
-    decode_string(prepare_name);
-    StmtData* stmt_data = (StmtData*)stmt_map_->remove(string(prepare_name));
-    if (NULL == stmt_data) {
-        EiEncoder::encode_error_msg("failed to get stmt data", res);
-    } else {
-        mysql_free_result((MYSQL_RES*)stmt_data->meta_data);
-        mysql_stmt_close((MYSQL_STMT*)stmt_data->stmt);
-        delete stmt_data;
-        EiEncoder::encode_ok_msg("close stmt", res);
-    }
-    free_string(prepare_name);
-    return true;
-}
-
 void MysqlDBOperation::exec_sql(const char* sql, ei_x_buff* res) {
     MYSQL * db_conn = NULL;
-    //     cout << "sql=" << sql << "\r" <<endl;
+    // cout << "sql=" << sql << "\r" <<endl;
     if (real_query_sql(sql, res, db_conn)) {
         if (mysql_field_count(db_conn) > 0) {
             MYSQL_RES* record_set = mysql_store_result(db_conn);
             encode_select_result(record_set, res);
             mysql_free_result(record_set);
+
+            // fixed procedure store results.
+            while(!mysql_next_result(db_conn)) {
+                record_set = mysql_store_result(db_conn);
+                if (record_set)
+                {
+                    mysql_free_result(record_set);
+                }
+            }
+
             record_set = NULL;
         } else {
             unsigned long long rows_num = mysql_affected_rows(db_conn);
@@ -583,8 +652,10 @@ void MysqlDBOperation::encode_one_row(MYSQL_ROW curr_row, MYSQL_FIELD* fields,
     ei_x_encode_list_header(res, field_num);
     for (unsigned int col = 0; col < field_num; col++) {
         MYSQL_TIME tm;
-        if (field_lengths[col] <= 0) {
+        if (!curr_row[col]) {
             ei_x_encode_atom(res, "undefined");
+        } else if (field_lengths[col] <= 0) {
+            ei_x_encode_string(res, "");
         } else if (IS_BLOB(fields[col].flags)
                 || fields[col].type == MYSQL_TYPE_BIT) {
             ei_x_encode_binary(res, curr_row[col], field_lengths[col]);
@@ -629,68 +700,6 @@ void MysqlDBOperation::encode_one_row(MYSQL_ROW curr_row, MYSQL_FIELD* fields,
     ei_x_encode_empty_list(res);
 }
 
-int MysqlDBOperation::map_mysql_type(const char* type) {
-    string mysql_type(type);
-    enum_field_types field_type;
-    if (0 == mysql_type.compare("bit")) {
-        field_type = MYSQL_TYPE_BIT;
-    } else if (0 == mysql_type.compare("tinyint")) {
-        field_type = MYSQL_TYPE_TINY;
-    } else if (0 == mysql_type.compare("smallint")) {
-        field_type = MYSQL_TYPE_SHORT;
-    } else if (0 == mysql_type.compare("mediumint")) {
-        field_type = MYSQL_TYPE_INT24;
-    } else if (0 == mysql_type.compare("int")) {
-        field_type = MYSQL_TYPE_LONG;
-    } else if (0 == mysql_type.compare("bigint")) {
-        field_type = MYSQL_TYPE_LONGLONG;
-    } else if (0 == mysql_type.compare("float")) {
-        field_type = MYSQL_TYPE_FLOAT;
-    } else if (0 == mysql_type.compare("double")) {
-        field_type = MYSQL_TYPE_DOUBLE;
-    } else if (0 == mysql_type.compare("decimal")) {
-        field_type = MYSQL_TYPE_DECIMAL;
-    } else if (0 == mysql_type.compare("date")) {
-        field_type = MYSQL_TYPE_DATE;
-    } else if (0 == mysql_type.compare("datetime")) {
-        field_type = MYSQL_TYPE_DATETIME;
-    } else if (0 == mysql_type.compare("timestamp")) {
-        field_type = MYSQL_TYPE_TIMESTAMP;
-    } else if (0 == mysql_type.compare("time")) {
-        field_type = MYSQL_TYPE_TIME;
-    } else if (0 == mysql_type.compare("year")) {
-        field_type = MYSQL_TYPE_YEAR;
-    } else if (0 == mysql_type.compare("char")
-            || 0 == mysql_type.compare("binary")) {
-        field_type = MYSQL_TYPE_STRING;
-    } else if (0 == mysql_type.compare("varchar")) {
-        field_type = MYSQL_TYPE_VARCHAR;
-    } else if (0 == mysql_type.compare("varbinary")) {
-        field_type = MYSQL_TYPE_VAR_STRING;
-    } else if (0 == mysql_type.compare("tinytext")
-            || 0 == mysql_type.compare("tinyblob")) {
-        field_type = MYSQL_TYPE_TINY_BLOB;
-    } else if (0 == mysql_type.compare("text")
-            || 0 == mysql_type.compare("blob")) {
-        field_type = MYSQL_TYPE_BLOB;
-    } else if (0 == mysql_type.compare("mediumtext")
-            || 0 == mysql_type.compare("mediumblob")) {
-        field_type = MYSQL_TYPE_MEDIUM_BLOB;
-    } else if (0 == mysql_type.compare("longtext")
-            || 0 == mysql_type.compare("longblob")) {
-        field_type = MYSQL_TYPE_LONG_BLOB;
-    } else if (0 == mysql_type.compare("geometry")) {
-        field_type = MYSQL_TYPE_GEOMETRY;
-    } else if (0 == mysql_type.compare("enum")) {
-        field_type = MYSQL_TYPE_ENUM;
-    } else if (0 == mysql_type.compare("set")) {
-        field_type = MYSQL_TYPE_SET;
-    } else {
-        return -1;
-    }
-    return (int) field_type;
-}
-
 const enum_field_types MysqlDBOperation::get_db_field_type(char field_type) const {
     enum_field_types type;
     switch (field_type) {
@@ -719,7 +728,6 @@ const enum_field_types MysqlDBOperation::get_db_field_type(char field_type) cons
 }
 
 void MysqlDBOperation::fill_value(stringstream & sm, FieldValue &field) {
-    char *new_bin;
     switch (field.erl_type) {
         case ERL_SMALL_INTEGER_EXT:
         case ERL_INTEGER_EXT:
@@ -730,16 +738,19 @@ void MysqlDBOperation::fill_value(stringstream & sm, FieldValue &field) {
         case ERL_FLOAT_EXT:
             sm << *(double*) field.value;
             break;
-        case ERL_BINARY_EXT:
-            new_bin = new char[2 * field.length + 1];
-            mysql_real_escape_string((MYSQL*) (conn_->get_connection()), new_bin, (char*) field.value, field.length);
-            sm << " \"" << new_bin << "\"";
-            delete [] new_bin;
-            break;
         case ERL_ATOM_EXT:
-        case ERL_LIST_EXT:
+            sm << (char*) field.value;
+            break;
+        case ERL_SMALL_TUPLE_EXT:
+        case ERL_LARGE_TUPLE_EXT:
+            sm << (char*) field.value;
+            break;
         case ERL_STRING_EXT:
+        case ERL_LIST_EXT:
             sm << "\"" << (char*) field.value << "\"";
+            break;
+        case ERL_BINARY_EXT:
+            fill_binary_value(sm, (char*) field.value, field.length);
             break;
         default:
             sm << "\"" << (char*) field.value << "\"";
@@ -810,46 +821,269 @@ void MysqlDBOperation::make_extras(stringstream& sm) {
 }
 
 void MysqlDBOperation::decode_expr(stringstream& sm) {
+    char *str = NULL;
+    char *bin = NULL;
+    int len;
     ei_get_type(buf_, &index_, &type_, &size_);
-    if (ERL_SMALL_TUPLE_EXT == type_ || ERL_LARGE_TUPLE_EXT == type_) {
-        decode_expr_tuple(sm);
-    } else if (ERL_STRING_EXT == type_ || ERL_LIST_EXT == type_) {
-        char * str = NULL;
-        decode_string(str);
-        sm << " \"" << str << "\"";
-        free_string(str);
-    } else if (ERL_ATOM_EXT == type_) {
-        // char str[20];
-        // ei_decode_atom(buf_, &index_, str);
-        // sm << " " << str;
-        char * str = NULL;
-        decode_string(str);
-        sm << " " << str;
-        free_string(str);
-    } else if (ERL_SMALL_INTEGER_EXT == type_ || ERL_INTEGER_EXT == type_) {
-        sm << " " << decode_long();
-    } else if (ERL_FLOAT_EXT == type_) {
-        sm << " " << decode_double();
-    } else if (ERL_BINARY_EXT == type_) {
-        char *bin = NULL;
-        int len = decode_binary(bin);
-        char *new_bin = new char[2 * len + 1];
-        mysql_real_escape_string((MYSQL*) (conn_->get_connection()), new_bin, bin, len);
-        sm << " \"" << new_bin << "\"";
-        free_binary(bin);
-        delete [] new_bin;
+    switch(type_) {
+        case ERL_SMALL_INTEGER_EXT:
+        case ERL_INTEGER_EXT:
+        case ERL_SMALL_BIG_EXT:
+        case ERL_LARGE_BIG_EXT:
+            sm << " " << decode_long();
+            break;
+        case ERL_FLOAT_EXT:
+            sm << " " << decode_double();
+            break;
+        case ERL_ATOM_EXT:
+            decode_string(str);
+            sm << " " << str;
+            free_string(str);
+            break;
+        case ERL_SMALL_TUPLE_EXT:
+        case ERL_LARGE_TUPLE_EXT:
+            decode_expr_tuple(sm);
+            break;
+        case ERL_NIL_EXT:
+            sm << " \"\"";
+            break;
+        case ERL_STRING_EXT:
+        case ERL_LIST_EXT:
+            decode_string(str);
+            sm << " \"" << str << "\"";
+            free_string(str);
+            break;
+        case ERL_BINARY_EXT:
+            len = decode_binary(bin);
+            fill_binary_value(sm, bin, len);
+            free_binary(bin);
+            break;
     }
 }
 
 void MysqlDBOperation::decode_expr_tuple(stringstream& sm) {
-    long key;
     int len;
     char *str = NULL;
     ei_decode_tuple_header(buf_, &index_, &type_);
     ei_get_type(buf_, &index_, &type_, &size_);
-    if (ERL_ATOM_EXT == type_ || ERL_STRING_EXT == type_ || ERL_LIST_EXT == type_ || ERL_NIL_EXT == type_) {
-        decode_string(str);
-        if (strcmp(str, "datetime") == 0) {
+    SqlKeyword key = (SqlKeyword) decode_long();
+    switch(key) {
+        case DB_DRV_SQL_AND:
+            ei_decode_list_header(buf_, &index_, &type_);
+            len = type_;
+            sm << " (";
+            for (int i = 0; i < len; i++) {
+                decode_expr(sm);
+                if (i < len - 1) {
+                    sm << " and";
+                }
+            }
+            sm << ")";
+            ei_decode_list_header(buf_, &index_, &type_);
+            break;
+        case DB_DRV_SQL_OR:
+            sm << " (";
+            decode_expr(sm);
+            sm << " or";
+            decode_expr(sm);
+            sm << ")";
+            break;
+        case DB_DRV_SQL_NOT:
+            sm << " not";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_LIKE:
+            decode_expr(sm);
+            sm << " like";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_AS:
+            decode_expr(sm);
+            sm << " as";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_EQUAL:
+            decode_expr(sm);
+            sm << "=";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_GREATER:
+            decode_expr(sm);
+            sm << ">";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_GREATER_EQUAL:
+            decode_expr(sm);
+            sm << ">=";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_LESS:
+            decode_expr(sm);
+            sm << "<";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_LESS_EQUAL:
+            decode_expr(sm);
+            sm << "<=";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_JOIN:
+            decode_expr(sm);
+            sm << " join";
+            decode_expr(sm);
+            sm << " on";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_LEFT_JOIN:
+            decode_expr(sm);
+            sm << " left join";
+            decode_expr(sm);
+            sm << " on";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_RIGHT_JOIN:
+            decode_expr(sm);
+            sm << " right join";
+            decode_expr(sm);
+            sm << " on";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_INNER_JOIN:
+            decode_expr(sm);
+            sm << " inner join";
+            decode_expr(sm);
+            sm << " on";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_NOT_EQUAL:
+            decode_expr(sm);
+            sm << "!=";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_ORDER:
+            sm << " order by";
+            ei_decode_list_header(buf_, &index_, &type_);
+            len = type_;
+            for (int i = 0; i < len; i++) {
+                ei_decode_tuple_header(buf_, &index_, &type_);
+                decode_expr(sm);
+                sm << ((0 == decode_int()) ? " asc" : " desc");
+                if (i < len - 1) {
+                    sm << ",";
+                }
+            }
+            ei_decode_list_header(buf_, &index_, &type_);
+            break;
+        case DB_DRV_SQL_LIMIT:
+            sm << " limit " << decode_int() << ",";
+            sm << decode_int();
+            break;
+        case DB_DRV_SQL_DOT:
+            sm << " ";
+            decode_string(str);
+            sm << str << ".";
+            free_string(str);
+            decode_string(str);
+            sm << str;
+            free_string(str);
+            break;
+        case DB_DRV_SQL_GROUP:
+            sm << " group by";
+            ei_decode_list_header(buf_, &index_, &type_);
+            len = type_;
+            for (int i = 0; i < len; i++) {
+                decode_expr(sm);
+                if (i < len - 1) {
+                    sm << ",";
+                }
+            }
+            ei_decode_list_header(buf_, &index_, &type_);
+            break;
+        case DB_DRV_SQL_HAVING:
+            sm << " having";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_BETWEEN:
+            decode_expr(sm);
+            sm << " between";
+            decode_expr(sm);
+            sm << " and";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_IN:
+            decode_expr(sm);
+            sm << " in (";
+            ei_get_type(buf_, &index_, &type_, &size_);
+            len = size_;
+            if (type_ == ERL_STRING_EXT) {
+                char *temp = new char[len];
+                ei_decode_string(buf_, &index_, temp);
+                for (int i = 0; i < len; i++) {
+                    sm << (long) temp[i];
+                    if (i < len - 1) {
+                        sm << ",";
+                    }
+                }
+                delete [] temp;
+            } else {
+                ei_decode_list_header(buf_, &index_, &type_);
+                for (int i = 0; i < len; i++) {
+                    decode_expr(sm);
+                    if (i < len - 1) {
+                        sm << ",";
+                    }
+                }
+                ei_decode_list_header(buf_, &index_, &type_);
+            }
+            sm << ")";
+            break;
+        case DB_DRV_SQL_ADD:
+            sm << " (";
+            decode_expr(sm);
+            sm << "+";
+            decode_expr(sm);
+            sm << ")";
+            break;
+        case DB_DRV_SQL_SUB:
+            sm << " (";
+            decode_expr(sm);
+            sm << "-";
+            decode_expr(sm);
+            sm << ")";
+            break;
+       case DB_DRV_SQL_MUL:
+            decode_expr(sm);
+            sm << "*";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_DIV:
+            decode_expr(sm);
+            sm << "/";
+            decode_expr(sm);
+            break;
+        case DB_DRV_SQL_FUN:
+            decode_expr(sm);
+            sm << "(";
+            ei_decode_list_header(buf_, &index_, &type_);
+            len = type_;
+            for (int i = 0; i < len; i++) {
+                decode_expr(sm);
+                if (i < len - 1) {
+                    sm << ",";
+                }
+            }
+            ei_decode_list_header(buf_, &index_, &type_);
+            sm << ")";
+            break;
+        case DB_DRV_SQL_IS_NULL:
+            decode_expr(sm);
+            sm << " is null";
+            break;
+        case DB_DRV_SQL_IS_NOT_NULL:
+            decode_expr(sm);
+            sm << " is not null";
+            break;
+        case DB_DRV_SQL_DATETIME:
             ei_decode_tuple_header(buf_, &index_, &type_);
             ei_decode_tuple_header(buf_, &index_, &type_);
             sm << " \"" << decode_int();
@@ -859,230 +1093,20 @@ void MysqlDBOperation::decode_expr_tuple(stringstream& sm) {
             sm << " " << decode_int();
             sm << ":" << decode_int();
             sm << ":" << decode_int() << "\"";
-        } else if (strcmp(str, "date") == 0) {
+            break;
+        case DB_DRV_SQL_DATE:
             ei_decode_tuple_header(buf_, &index_, &type_);
             sm << " \"" << decode_int();
             sm << "-" << decode_int();
             sm << "-" << decode_int() << "\"";
-        } else if (strcmp(str, "time") == 0) {
-             ei_decode_tuple_header(buf_, &index_, &type_);
+            break;
+        case DB_DRV_SQL_TIME:
+            ei_decode_tuple_header(buf_, &index_, &type_);
             sm << " \"" << decode_int();
             sm << ":" << decode_int();
             sm << ":" << decode_int() << "\"";
-        }
-        free_string(str);
-    } else {
-        ei_decode_long(buf_, &index_, &key);
-        switch ((SqlKeyword) key) {
-            case SQL_AND:
-                ei_decode_list_header(buf_, &index_, &type_);
-                len = type_;
-                sm << " (";
-                for (int i = 0; i < len; i++) {
-                    decode_expr(sm);
-                    if (i < len - 1) {
-                        sm << " and";
-                    }
-                }
-                sm << ")";
-                ei_decode_list_header(buf_, &index_, &type_);
-                break;
-            case SQL_OR:
-                sm << " (";
-                decode_expr(sm);
-                sm << " or";
-                decode_expr(sm);
-                sm << ")";
-                break;
-            case SQL_NOT:
-                sm << " not";
-                decode_expr(sm);
-                break;
-            case SQL_LIKE:
-                decode_expr(sm);
-                sm << " like";
-                decode_expr(sm);
-                break;
-            case SQL_AS:
-                decode_expr(sm);
-                sm << " as";
-                decode_expr(sm);
-                break;
-            case SQL_EQUAL:
-                decode_expr(sm);
-                sm << "=";
-                decode_expr(sm);
-                break;
-            case SQL_GREATER:
-                decode_expr(sm);
-                sm << ">";
-                decode_expr(sm);
-                break;
-            case SQL_GREATER_EQUAL:
-                decode_expr(sm);
-                sm << ">=";
-                decode_expr(sm);
-                break;
-            case SQL_LESS:
-                decode_expr(sm);
-                sm << "<";
-                decode_expr(sm);
-                break;
-            case SQL_LESS_EQUAL:
-                decode_expr(sm);
-                sm << "<=";
-                decode_expr(sm);
-                break;
-            case SQL_JOIN:
-                decode_expr(sm);
-                sm << " join";
-                decode_expr(sm);
-                sm << " on";
-                decode_expr(sm);
-                break;
-            case SQL_LEFT_JOIN:
-                decode_expr(sm);
-                sm << " left join";
-                decode_expr(sm);
-                sm << " on";
-                decode_expr(sm);
-                break;
-            case SQL_RIGHT_JOIN:
-                decode_expr(sm);
-                sm << " right join";
-                decode_expr(sm);
-                sm << " on";
-                decode_expr(sm);
-                break;
-            case SQL_INNER_JOIN:
-                decode_expr(sm);
-                sm << " inner join";
-                decode_expr(sm);
-                sm << " on";
-                decode_expr(sm);
-                break;
-            case SQL_NOT_EQUAL:
-                decode_expr(sm);
-                sm << "!=";
-                decode_expr(sm);
-                break;
-            case SQL_ORDER:
-                sm << " order by";
-                ei_decode_list_header(buf_, &index_, &type_);
-                len = type_;
-                for (int i = 0; i < len; i++) {
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    decode_expr(sm);
-                    sm << ((0 == decode_int()) ? " asc" : " desc");
-                    if (i < len - 1) {
-                        sm << ",";
-                    }
-                }
-                ei_decode_list_header(buf_, &index_, &type_);
-                break;
-            case SQL_LIMIT:
-                sm << " limit " << decode_int() << ",";
-                sm << decode_int();
-                break;
-            case SQL_DOT:
-                sm << " ";
-                decode_string(str);
-                sm << str << ".";
-                free_string(str);
-                decode_string(str);
-                sm << str;
-                free_string(str);
-                break;
-            case SQL_GROUP:
-                sm << " group by";
-                ei_decode_list_header(buf_, &index_, &type_);
-                len = type_;
-                for (int i = 0; i < len; i++) {
-                    decode_expr(sm);
-                    if (i < len - 1) {
-                        sm << ",";
-                    }
-                }
-                ei_decode_list_header(buf_, &index_, &type_);
-                break;
-            case SQL_HAVING:
-                sm << " having";
-                decode_expr(sm);
-                break;
-            case SQL_BETWEEN:
-                decode_expr(sm);
-                sm << " between";
-                decode_expr(sm);
-                sm << " and";
-                decode_expr(sm);
-                break;
-            case SQL_IN:
-                decode_expr(sm);
-                sm << " in (";
-                ei_get_type(buf_, &index_, &type_, &size_);
-                len = size_;
-                if (type_ == ERL_STRING_EXT) {
-                    char *temp = new char[len];
-                    ei_decode_string(buf_, &index_, temp);
-                    for (int i = 0; i < len; i++) {
-                        sm << (long) temp[i];
-                        if (i < len - 1) {
-                            sm << ",";
-                        }
-                    }
-                    delete [] temp;
-                } else {
-                    ei_decode_list_header(buf_, &index_, &type_);
-                    for (int i = 0; i < len; i++) {
-                        decode_expr(sm);
-                        if (i < len - 1) {
-                            sm << ",";
-                        }
-                    }
-                    ei_decode_list_header(buf_, &index_, &type_);
-                }
-                sm << ")";
-                break;
-            case SQL_ADD:
-                sm << " (";
-                decode_expr(sm);
-                sm << "+";
-                decode_expr(sm);
-                sm << ")";
-                break;
-            case SQL_SUB:
-                sm << " (";
-                decode_expr(sm);
-                sm << "-";
-                decode_expr(sm);
-                sm << ")";
-                break;
-           case SQL_MUL:
-                decode_expr(sm);
-                sm << "*";
-                decode_expr(sm);
-                break;
-            case SQL_DIV:
-                decode_expr(sm);
-                sm << "/";
-                decode_expr(sm);
-                break;
-            case SQL_FUN:
-                decode_expr(sm);
-                sm << "(";
-                ei_decode_list_header(buf_, &index_, &type_);
-                len = type_;
-                for (int i = 0; i < len; i++) {
-                    decode_expr(sm);
-                    if (i < len - 1) {
-                        sm << ",";
-                    }
-                }
-                ei_decode_list_header(buf_, &index_, &type_);
-                sm << ")";
-                break;
-            default:
-                break;
-        }
+            break;
+        default:
+            break;
     }
 }

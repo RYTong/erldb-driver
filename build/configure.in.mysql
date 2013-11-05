@@ -1,6 +1,6 @@
 dnl -*- Mode: autoconf; -*-
 dnl autoconf library script for detection of mysql libraries.
-dnl 
+dnl
 dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
 dnl All rights reserved.
 dnl
@@ -18,9 +18,8 @@ AC_MSG_CHECKING([MySQL headers])
 MYSQL_INCL=""
 for d in \
   /usr/include/mysql \
-  /usr/include \
-  /usr/local/include/mysql \
   /usr/local/include \
+  /usr/local/include/mysql \
   /usr/local/mysql/include \
   /opt/local/include/mysql \
   /opt/local/include/mysql5/mysql \
@@ -41,6 +40,7 @@ if test `uname -p` = "x86_64" ; then
     LIBPATH=lib64
 fi
 for d in \
+    /usr/local/lib \
     /usr/$LIBPATH/mysql \
     /usr/local/$LIBPATH/mysql \
     /opt/local/lib/mysql \

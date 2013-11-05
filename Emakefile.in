@@ -1,8 +1,8 @@
 %% -*- mode: erlang -*-
 {"src/*", [@EMAKE_FLAGS@,
            {outdir, "@SRC_TOP@/ebin"},
-		   {i, "include"}]}.
+           {i, "include"}]}.
 
 {"test/*", [@EMAKE_FLAGS@,
            {outdir, "@SRC_TOP@/ebin"},
-		   {i, "include"}]}.
+           {i, "include"}]}.

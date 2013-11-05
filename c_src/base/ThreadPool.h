@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -32,10 +32,10 @@
 #include <iostream>
 
 
-#include "Mutex.h"
-#include "debug.h"
-#include "EiEncoder.h"
-#include "SysLogger.h"
+#include "../util/Mutex.h"
+#include "../util/debug.h"
+#include "../util/EiEncoder.h"
+#include "../util/SysLogger.h"
 
 using namespace std;
 
@@ -62,7 +62,7 @@ public:
      *  @return None.
      */
     ThreadPool();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */

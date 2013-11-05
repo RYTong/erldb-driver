@@ -1519,7 +1519,7 @@ CS_RETCODE SybStatement::encode_column_data(ei_x_buff* result, COLUMN_DATA *colu
     CS_RETCODE retcode;
     CS_DATAFMT *dfmt = &column->dfmt;
 
-    if (column->indicator <= 0) {
+    if (column->indicator == 0) {
         switch (dfmt->datatype) {
             
             /** Binary types */
@@ -1785,7 +1785,14 @@ CS_RETCODE SybStatement::encode_column_data(ei_x_buff* result, COLUMN_DATA *colu
                 }
                 break;
         }
-    } else {
+    } else if (column->indicator == -1) {
+        retcode = encode_null(result);
+        if (retcode != CS_SUCCEED) {
+            SysLogger::error("encode_column_data: encode_null() failed");
+            return retcode;
+        }
+    }
+    else {
         
         /* Buffer overflow */
         retcode = encode_overflow(result);
@@ -1822,34 +1829,22 @@ bool SybStatement::set_param(CS_DATAFMT* dfmt, CS_VOID* data, CS_INT len)
 CS_RETCODE SybStatement::encode_binary(ei_x_buff* x,
         CS_DATAFMT* dfmt, CS_BINARY* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_binary(x, (const void*)v,
-                (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return ei_x_encode_binary(x, (const void*)v,
+            (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_longbinary(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_LONGBINARY* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_binary(x, (const void*)v,
-                (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return ei_x_encode_binary(x, (const void*)v,
+            (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_varbinary(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_VARBINARY* v)
 {
-    if (v->len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_binary(x, (const void*)v->array,
-                (long)v->len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return ei_x_encode_binary(x, (const void*)v->array,
+            (long)v->len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_bit(ei_x_buff* x, 
@@ -1861,34 +1856,20 @@ CS_RETCODE SybStatement::encode_bit(ei_x_buff* x,
 CS_RETCODE SybStatement::encode_char(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_CHAR* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_string_len(x, (const char*)v,
-                len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return encode_string(x, (const char*)v, len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_longchar(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_LONGCHAR* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_string_len(x, (const char*)v,
-                len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return encode_string(x, (const char*)v, len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_varchar(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_VARCHAR* v)
 {
-    if (v->len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_string_len(x, (const char*)v->str,
-                (int)v->len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return encode_string(x, (const char*)v->str,
+            (int)v->len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_unichar(ei_x_buff* x, 
@@ -1896,33 +1877,25 @@ CS_RETCODE SybStatement::encode_unichar(ei_x_buff* x,
 {
     CS_INT i;
 
-    if (len <= 1 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        len = len / sizeof(CS_UNICHAR);
-        if (ei_x_encode_list_header(x, (long)len)) {
+    len = len / sizeof(CS_UNICHAR);
+    if (ei_x_encode_list_header(x, (long)len)) {
+        return CS_FAIL;
+    }
+    for (i = 0; i < len; ++i) {
+        if(ei_x_encode_ulong(x, (unsigned long)v[i])) {
             return CS_FAIL;
         }
-        for (i = 0; i < len; ++i) {
-            if(ei_x_encode_ulong(x, (unsigned long)v[i])) {
-                return CS_FAIL;
-            }
-        }
-        ei_x_encode_empty_list(x);
-
-        return CS_SUCCEED;
     }
+    ei_x_encode_empty_list(x);
+
+    return CS_SUCCEED;
 }
 
 CS_RETCODE SybStatement::encode_xml(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_XML* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_string_len(x, (const char*)v,
-                len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return ei_x_encode_string_len(x, (const char*)v,
+            len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_date(ei_x_buff* x,
@@ -1930,10 +1903,6 @@ CS_RETCODE SybStatement::encode_date(ei_x_buff* x,
 {
     CS_CONTEXT* context;
     CS_DATEREC daterec;
-
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -1962,10 +1931,6 @@ CS_RETCODE SybStatement::encode_time(ei_x_buff* x,
     CS_CONTEXT* context;
     CS_DATEREC daterec;
 
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
         return CS_FAIL;
@@ -1993,11 +1958,6 @@ CS_RETCODE SybStatement::encode_datetime(ei_x_buff* x,
 {
     CS_CONTEXT* context;
     CS_DATEREC daterec;
-
-    if(v->dtdays == 0 && v->dttime == 0 &&
-            dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -2034,11 +1994,6 @@ CS_RETCODE SybStatement::encode_datetime4(ei_x_buff* x,
     CS_CONTEXT* context;
     CS_DATEREC daterec;
 
-    if(v->days == 0 && v->minutes == 0 &&
-            dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
         return CS_FAIL;
@@ -2072,10 +2027,6 @@ CS_RETCODE SybStatement::encode_bigdatetime(ei_x_buff* x,
 {
     CS_CONTEXT* context;
     CS_DATEREC daterec;
-
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -2113,10 +2064,6 @@ CS_RETCODE SybStatement::encode_bigtime(ei_x_buff* x,
     CS_CONTEXT* context;
     CS_DATEREC daterec;
 
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
         return CS_FAIL;
@@ -2144,70 +2091,42 @@ CS_RETCODE SybStatement::encode_bigtime(ei_x_buff* x,
 CS_RETCODE SybStatement::encode_tinyint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_TINYINT* v)
 {
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
     return ei_x_encode_char(x, (char)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_smallint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_SMALLINT* v)
 {
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
     return ei_x_encode_long(x, (long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_int(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_INT* v)
-{
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
+{    
     return ei_x_encode_long(x, (long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_bigint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_BIGINT* v)
-{
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
+{   
     return ei_x_encode_long(x, (long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_usmallint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_USMALLINT* v)
-{
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
+{   
     return ei_x_encode_ulong(x, (unsigned long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_uint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_UINT* v)
-{
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
+{   
     return ei_x_encode_ulong(x, (unsigned long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_ubigint(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_UBIGINT* v)
 {
-    if(*v == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
     return ei_x_encode_ulong(x, (unsigned long)*v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
@@ -2218,16 +2137,6 @@ CS_RETCODE SybStatement::encode_decimal(ei_x_buff* x,
     CS_DATAFMT destfmt;
     CS_CHAR dest[79];
     CS_INT destlen;
-    CS_INT i;
-
-    for (i = 0; i < 17 ; ++i) {
-        if (v->array[i] != 0) {
-            break;
-        }
-    }
-    if (i >= 17 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -2259,16 +2168,6 @@ CS_RETCODE SybStatement::encode_numeric(ei_x_buff* x,
     CS_DATAFMT destfmt;
     CS_CHAR dest[79];
     CS_INT destlen;
-    CS_INT i;
-
-    for (i = 0; i < 17 ; ++i) {
-        if (v->array[i] != 0) {
-            break;
-        }
-    }
-    if (i >= 17 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -2295,21 +2194,13 @@ CS_RETCODE SybStatement::encode_numeric(ei_x_buff* x,
 
 CS_RETCODE SybStatement::encode_float(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_FLOAT* v)
-{
-    if(*v == 0.0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
+{   
     return ei_x_encode_double(x, *v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_real(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_REAL* v)
 {
-    if(*v == 0.0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-    
     return ei_x_encode_double(x, *v) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
@@ -2320,11 +2211,6 @@ CS_RETCODE SybStatement::encode_money(ei_x_buff* x,
     CS_DATAFMT destfmt;
     CS_CHAR dest[24];
     CS_INT destlen;
-
-    if (v->mnyhigh == 0 && v->mnylow == 0 && 
-            dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
 
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
@@ -2357,10 +2243,6 @@ CS_RETCODE SybStatement::encode_money4(ei_x_buff* x,
     CS_FLOAT dest;
     CS_INT destlen;
 
-    if(v->mny4 == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    }
-
     if (ct_con_props(conn_, CS_GET, CS_PARENT_HANDLE,
             &context, CS_UNUSED, NULL) != CS_SUCCEED) {
         return CS_FAIL;
@@ -2382,23 +2264,14 @@ CS_RETCODE SybStatement::encode_money4(ei_x_buff* x,
 CS_RETCODE SybStatement::encode_text(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_TEXT* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_string_len(x, (const char*)v,
-                len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return encode_string(x, (const char*)v, len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_image(ei_x_buff* x, 
         CS_DATAFMT* dfmt, CS_IMAGE* v, CS_INT len)
 {
-    if (len == 0 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        return ei_x_encode_binary(x, (const void*)v,
-                (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
-    }
+    return ei_x_encode_binary(x, (const void*)v,
+            (long)len) == 0 ? CS_SUCCEED:CS_FAIL;
 }
 
 CS_RETCODE SybStatement::encode_unitext(ei_x_buff* x, 
@@ -2406,22 +2279,18 @@ CS_RETCODE SybStatement::encode_unitext(ei_x_buff* x,
 {
     CS_INT i;
 
-    if (len <= 1 && dfmt->name != NULL && dfmt->name[0] != 0) {
-        return encode_null(x);
-    } else {
-        len = len / sizeof(CS_UNICHAR);
-        if (ei_x_encode_list_header(x, (long)len)) {
+    len = len / sizeof(CS_UNICHAR);
+    if (ei_x_encode_list_header(x, (long)len)) {
+        return CS_FAIL;
+    }
+    for (i = 0; i < len; ++i) {
+        if(ei_x_encode_ulong(x, (unsigned long)v[i])) {
             return CS_FAIL;
         }
-        for (i = 0; i < len; ++i) {
-            if(ei_x_encode_ulong(x, (unsigned long)v[i])) {
-                return CS_FAIL;
-            }
-        }
-        ei_x_encode_empty_list(x);
-
-        return CS_SUCCEED;
     }
+    ei_x_encode_empty_list(x);
+
+    return CS_SUCCEED;
 }
 
 CS_RETCODE SybStatement::encode_unknown(ei_x_buff* const x)
