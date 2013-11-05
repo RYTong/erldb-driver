@@ -18,10 +18,13 @@ priv/database_drv.so
 *.beam
 
 doc/lib/*
+
 autom4te.cache/*
-
-
 
 ebin/db.app
 
 *.orig
+
+*.d
+
+logs/*
