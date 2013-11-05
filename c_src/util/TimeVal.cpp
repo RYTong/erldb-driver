@@ -50,7 +50,7 @@ bool TimeVal::fromString(const char* in_str) {
     struct tm lt;
     char *ptr;
     char* str = new char[strlen(in_str) + 1];
-    strcpy(str, in_str);
+    ewp_strcpy(str, in_str);
 
     u_int32_t usec = 0;
     char* p = index(str, '.');
@@ -161,7 +161,7 @@ bool TimeVal::fromISO8601UTC(const char* in_str) {
     static bool localAdjustKnown = false;
     static int gmtoff;
     char* str = new char[strlen(in_str) + 1];
-    strcpy(str, in_str);
+    ewp_strcpy(str, in_str);
     char *p = strstr(str, "T");
     if (p) *p = ' ';
     bool ret = fromString(str); // parse UTC as if localtime

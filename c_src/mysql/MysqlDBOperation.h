@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -27,8 +27,8 @@
 #define _RYT_MYSQL_DATABASE_H
 
 #include <mysql.h>
-#include "base/DBOperation.h"
-#include "base/StmtMap.h"
+#include "../base/DBOperation.h"
+#include "../base/StmtMap.h"
 
 namespace rytong {
 /** @brief struct StmtData.
@@ -47,7 +47,7 @@ public:
      *  @return None.
      */
     MysqlDBOperation();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -107,23 +107,25 @@ public:
      *  @see DBOperation::prepare_stat_init.
      */
     bool prepare_stat_init(ei_x_buff * const res);
+    bool prepare_statement_init(ei_x_buff * const res);
 
     /** @brief Perpare statement execute interface.
      * @warning This function is not safe in multithreading.
      *  @see DBOperation::prepare_stat_exec.
      */
     bool prepare_stat_exec(ei_x_buff * const res);
+    bool prepare_statement_exec(ei_x_buff * const res);
 
     /** @brief Perpare statement release interface.
      *  @see DBOperation::prepare_stat_release.
      */
     bool prepare_stat_release(ei_x_buff * const res);
+    bool prepare_statement_release(ei_x_buff * const res);
 
-    /** @brief Mapping mysql field type.
-     *  @param type Mysql type name.
-     *  @return Mysql type code.
+    /** @brief Decode the expression in fields and where clause.
+     *  @see DBOperation::decode_expr_tuple.
      */
-    int map_mysql_type(const char* type);
+    void decode_expr_tuple(stringstream & sm);
 
 private:
     /** These functions are not implemented to prohibit copy construction
@@ -132,7 +134,7 @@ private:
     MysqlDBOperation & operator =(const MysqlDBOperation&);
     MysqlDBOperation(MysqlDBOperation&);
 
-    bool real_query_sql(const char* sql, ei_x_buff * const res, 
+    bool real_query_sql(const char* sql, ei_x_buff * const res,
             MYSQL * & db_conn);
 
     /** execute sql string */
@@ -163,6 +165,14 @@ private:
         ei_x_encode_long(res, (long) day);
     }
 
+    /** Fill binary data */
+    inline void fill_binary_value(stringstream& sm, char* bin, int len) {
+        char * new_bin = new char[2 * len + 1];
+        mysql_real_escape_string((MYSQL*) (conn_->get_connection()), new_bin, bin, len);
+        sm << " \"" << new_bin << "\"";
+        delete [] new_bin;
+    }
+
     /** @brief Get field type for mysql.
      *  @param fieldtype Field type in erlang.
      *  @return Field type for mysql.
@@ -186,9 +196,6 @@ private:
 
     /** decode where clause */
     void decode_expr(stringstream & sm);
-
-    /** decode the tuple in where clause */
-    void decode_expr_tuple(stringstream & sm);
 };
 }/* end of namespace rytong */
 

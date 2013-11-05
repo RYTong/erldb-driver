@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -26,6 +26,8 @@
 #ifndef _RYT_DB_EXCEPTION_H
 #define _RYT_DB_EXCEPTION_H
 
+#include "../util/EWPString.h"
+
 namespace rytong{
 /** @brief Exception handler class.
  */
@@ -36,7 +38,7 @@ public:
      */
     DBException() throw() : what_(NULL){
     }
-    
+
     /** @brief Constructor for the class.
      *  @param what The message to be throw.
      *  @return None.
@@ -44,10 +46,10 @@ public:
     DBException(const char* what) throw() {
         what_ = new(nothrow) char[strlen(what) + 1];
         if (what_ != NULL) {
-          strcpy(what_, what);
+          ewp_strcpy(what_, what);
         }
     }
-    
+
     /** @brief Constructor for the class.
      *  @param ex The exception to be throw.
      *  @return None.
@@ -55,17 +57,17 @@ public:
      DBException(const DBException& ex) throw() {
         what_ = new(nothrow) char[strlen(ex.what()) + 1];
         if (what_ != NULL) {
-          strcpy(what_, ex.what());
+          ewp_strcpy(what_, ex.what());
         }
     }
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
     ~DBException()throw() {
         delete[] what_;
     }
-    
+
     /** @brief Overload operator '='.
      *  @param ex The exception to be throw.
      *  @return None.
@@ -74,7 +76,7 @@ public:
         delete[] what_;
         what_ = new(nothrow) char[strlen(ex.what()) + 1];
         if (what_ != NULL) {
-          strcpy(what_, ex.what());
+          ewp_strcpy(what_, ex.what());
         }
     }
 

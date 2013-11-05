@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -24,7 +24,7 @@
 #ifndef _SYBUTILS_H
 #define _SYBUTILS_H
 
-#include "SysLogger.h"
+#include "../util/SysLogger.h"
 
 #include <ctpublic.h>
 #include <stdlib.h>

@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -23,31 +23,35 @@
  *  @date Fri Nov 13 15:29:14 CST 2009
  */
 
-#include "base/ConnectionPool.h"
-#include "SysLogger.h"
+#include "ConnectionPool.h"
+#include "../util/SysLogger.h"
 
 using namespace rytong;
 
-ConnectionPool::ConnectionPool(DrvConf conf) {
-    // cout << "here to construct coon pool " <<endl;
-    Connection* conn;
-        for (int i = 0; i < conf.poolsize; i++) {
-            conn = create_conn(conf);
-            if (conn != NULL) {
-                pool_.push(conn);
-            }
 
+void ConnectionPool::set_pool(DatabaseType type, const char* host, const char* user,
+        const char* password, const char* db_name, unsigned int port, int size) {
+    Connection* conn;
+    for (int i = 0; i < size; i++) {
+        conn = create_conn(type, host, user, password, db_name, port);
+
+        if (conn != NULL) {
+            pool_.push(conn);
         }
+
+    }
 }
 
-Connection* ConnectionPool::create_conn(DrvConf conf) {
-    Connection* conn = Connection::create(conf.db_type);
-    /** @warning We should make Connection's interface 'connect' consistent in
-     * every derived class.
+Connection* ConnectionPool::create_conn(DatabaseType type, const char* host, const char* user,
+        const char* password, const char* db_name, unsigned int port) {
+    Connection* conn = Connection::create(type);
+    // cout << "conn: " << conn << endl;
+    /** @warning We should make sure the interface 'connect' is consistent
+     *   in every derived class.
      */
-    if (!conn->connect(conf.host, conf.user, conf.password,
-            conf.db_name, conf.port)) {
+    if (!conn->connect(host, user, password, db_name, port)) {
         SysLogger::error("invalid args to start connection");
+        // cout << "\rinvalid args to start connection" << endl;
         delete conn;
         return NULL;
     }
@@ -72,9 +76,6 @@ bool ConnectionPool::push(Connection* conn) {
     }
     if (NULL != conn) {
         pool_.push(conn);
-        if (1 == pool_.size()) {
-            cond_.broadcast();
-        }
     }
     mutex_.unlock();
     return true;
@@ -85,13 +86,10 @@ Connection* ConnectionPool::pop() {
     if (!mutex_.lock()) {
         return conn;
     }
-    while (pool_.empty()) {
-        if(ETIMEDOUT == cond_.timed_wait(mutex_, 1000)){
-            mutex_.unlock();
-            return conn;}
+    if (!pool_.empty()) {
+        conn = pool_.front();
+        pool_.pop();
     }
-    conn = pool_.front();
-    pool_.pop();
     mutex_.unlock();
     return conn;
 }

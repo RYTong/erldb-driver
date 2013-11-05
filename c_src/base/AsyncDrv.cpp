@@ -31,7 +31,7 @@ ErlDrvData AsyncDrv::start(ErlDrvPort port, char *command) {
     }
     DrvData* data;
     data = (DrvData*) driver_alloc(sizeof (DrvData));
-    rassert(data != NULL);
+    //rassert(data != NULL);
     if (NULL == data) {
         return ERL_DRV_ERROR_GENERAL;
     }
@@ -55,7 +55,7 @@ ErlDrvData AsyncDrv::start(ErlDrvPort port, char *command) {
 
 void AsyncDrv::stop(ErlDrvData handle) {
     DrvData* data = (DrvData*) handle;
-    rassert(data != NULL);
+    //rassert(data != NULL);
     driver_select((ErlDrvPort) (data->port), (ErlDrvEvent) (data->pipe_fd[0]),
         DO_READ, 0);
     close(data->pipe_fd[0]);
@@ -75,7 +75,7 @@ void AsyncDrv::stop(ErlDrvData handle) {
 void AsyncDrv::ready_input(ErlDrvData handle, ErlDrvEvent event) {
     // cout << "the async ready for input "<<endl;
     DrvData *drv = (DrvData *) handle;
-    rassert(drv != NULL);
+    //rassert(drv != NULL);
     // we use long here for 64-bits compatibility, given the
     // the assumption event will not overflow.
     int fd = (long) event;
@@ -92,7 +92,7 @@ void AsyncDrv::ready_input(ErlDrvData handle, ErlDrvEvent event) {
 }
 
 void AsyncDrv::reply_err(ErlDrvPort port, const char* msg) {
-    rassert(port != NULL);
+    //rassert(port != NULL);
     ei_x_buff result;
     EiEncoder::encode_error_msg(msg, &result);
     driver_output(port, result.buff, result.index);

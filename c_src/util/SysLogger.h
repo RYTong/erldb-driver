@@ -27,6 +27,7 @@
 #define _RYT_SYS_LOGGER_H
 
 #include <syslog.h>
+#include <stdio.h>
 
 namespace rytong {
 /** @brief System logger class.

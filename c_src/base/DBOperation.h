@@ -29,9 +29,9 @@
 #include <queue>
 #include <ei.h>
 #include <sstream>
-#include "base/Connection.h"
-#include "base/ConnectionPool.h"
-#include "base/StmtMap.h"
+#include "Connection.h"
+#include "ConnectionPool.h"
+#include "StmtMap.h"
 #include "DrvConf.h"
 
 using namespace std;
@@ -44,33 +44,38 @@ namespace rytong {
  *  @brief Sql keyword type.
  */
 enum SqlKeyword {
-    SQL_AND = 0,
-    SQL_OR = 1,
-    SQL_NOT = 2,
-    SQL_LIKE = 3,
-    SQL_AS = 4,
-    SQL_EQUAL = 5,
-    SQL_GREATER = 6,
-    SQL_GREATER_EQUAL = 7,
-    SQL_LESS = 8,
-    SQL_LESS_EQUAL = 9,
-    SQL_JOIN = 10,
-    SQL_LEFT_JOIN = 11,
-    SQL_RIGHT_JOIN = 12,
-    SQL_NOT_EQUAL = 13,
-    SQL_ORDER = 14,
-    SQL_LIMIT = 15,
-    SQL_DOT = 16,
-    SQL_GROUP = 17,
-    SQL_HAVING = 18,
-    SQL_BETWEEN = 19,
-    SQL_ADD = 20,
-    SQL_SUB = 21,
-    SQL_MUL = 22,
-    SQL_DIV = 23,
-    SQL_FUN = 24,
-    SQL_INNER_JOIN = 25,
-    SQL_IN = 26
+    DB_DRV_SQL_AND = 0,
+    DB_DRV_SQL_OR = 1,
+    DB_DRV_SQL_NOT = 2,
+    DB_DRV_SQL_LIKE = 3,
+    DB_DRV_SQL_AS = 4,
+    DB_DRV_SQL_EQUAL = 5,
+    DB_DRV_SQL_GREATER = 6,
+    DB_DRV_SQL_GREATER_EQUAL = 7,
+    DB_DRV_SQL_LESS = 8,
+    DB_DRV_SQL_LESS_EQUAL = 9,
+    DB_DRV_SQL_JOIN = 10,
+    DB_DRV_SQL_LEFT_JOIN = 11,
+    DB_DRV_SQL_RIGHT_JOIN = 12,
+    DB_DRV_SQL_NOT_EQUAL = 13,
+    DB_DRV_SQL_ORDER = 14,
+    DB_DRV_SQL_LIMIT = 15,
+    DB_DRV_SQL_DOT = 16,
+    DB_DRV_SQL_GROUP = 17,
+    DB_DRV_SQL_HAVING = 18,
+    DB_DRV_SQL_BETWEEN = 19,
+    DB_DRV_SQL_ADD = 20,
+    DB_DRV_SQL_SUB = 21,
+    DB_DRV_SQL_MUL = 22,
+    DB_DRV_SQL_DIV = 23,
+    DB_DRV_SQL_FUN = 24,
+    DB_DRV_SQL_INNER_JOIN = 25,
+    DB_DRV_SQL_IN = 26,
+    DB_DRV_SQL_IS_NULL = 27,
+    DB_DRV_SQL_IS_NOT_NULL = 28,
+    DB_DRV_SQL_DATETIME = 29,
+    DB_DRV_SQL_DATE = 30,
+    DB_DRV_SQL_TIME = 31
 };
 
 /** @brief Field value struct.
@@ -143,8 +148,9 @@ public:
      */
     inline void set_conn(Connection* conn) {
         conn_ = conn;
+        muli_tran_flag_ = false;
     }
-    
+
     /** @brief stmt_map_ setter.
      *  @param[in] stmt_map The pointer to the connection.
      *  @return None.
@@ -173,6 +179,7 @@ public:
         if (!decode_set_conn()){
             return NULL;
         }
+        muli_tran_flag_ = true;
         return conn_;
     }
 
@@ -247,6 +254,7 @@ public:
      *  @retval false Failed.
      */
     virtual bool prepare_stat_init(ei_x_buff * const res) = 0;
+    virtual bool prepare_statement_init(ei_x_buff * const res) = 0;
 
     /** @brief Perpare statement execute interface.
      *  @param[out] res Result encapsulated in erlang format.
@@ -255,6 +263,7 @@ public:
      *  @retval false Failed.
      */
     virtual bool prepare_stat_exec(ei_x_buff * const res) = 0;
+    virtual bool prepare_statement_exec(ei_x_buff * const res) = 0;
 
     /** @brief Perpare statement release interface.
      *  @param[out] res Result encapsulated in erlang format.
@@ -263,6 +272,12 @@ public:
      *  @retval false Failed.
      */
     virtual bool prepare_stat_release(ei_x_buff * const res) = 0;
+    virtual bool prepare_statement_release(ei_x_buff * const res) = 0;
+
+    /** @brief Decode the expression in fields and where clause.
+     *  @param[out] sm Result encapsulated in string.
+     */
+    virtual void decode_expr_tuple(stringstream & sm) = 0;
 
 protected:
     /** @brief Decode string or atom.
@@ -473,6 +488,10 @@ protected:
      *  @return None.
      */
     inline void decode_field_value(FieldValue & field_tuple) {
+        stringstream tuple_sm;
+        string tuple_str;
+        int tuple_len;
+
         ei_get_type(buf_, &index_, &type_, &size_);
         field_tuple.erl_type = type_;
 
@@ -499,54 +518,26 @@ protected:
                 break;
             case ERL_ATOM_EXT: // atom
                 field_tuple.value = (void*) (new char[size_ + 1]);
-                field_tuple.length = size_ + 1;
+                field_tuple.length = size_;
                 ei_decode_atom(buf_, &index_, (char*) field_tuple.value);
                 break;
+            case ERL_NIL_EXT:
             case ERL_STRING_EXT:
             case ERL_LIST_EXT: // list
                 field_tuple.value = (void*) (new char[size_ + 1]);
-                field_tuple.length = size_ + 1;
+                field_tuple.length = size_;
                 ei_decode_string(buf_, &index_, (char*) field_tuple.value);
                 break;
             case ERL_SMALL_TUPLE_EXT:
             case ERL_LARGE_TUPLE_EXT:
-                field_tuple.erl_type = ERL_STRING_EXT;
-                ei_decode_tuple_header(buf_, &index_, &type_);
-                char *tuple_type;
-                decode_string(tuple_type);
-        if (tuple_type == NULL) {
-                    field_tuple.value = NULL;
-                    field_tuple.length = 0;
-                } else if (0 == strncmp(tuple_type, "datetime", 8)) {
-                    field_tuple.value = (void*) (new char[20]);
-                    field_tuple.length = 20;
-                    stringstream datetime_sm;
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    decode_date_tuple(datetime_sm, '-');
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    datetime_sm << " ";
-                    decode_date_tuple(datetime_sm, ':');
-                    memcpy(field_tuple.value, datetime_sm.str().c_str(), 20);
-                } else if (0 == strncmp(tuple_type, "date", 4)) {
-                    field_tuple.value = (void*) (new char[11]);
-                    field_tuple.length = 11;
-                    stringstream date_sm;
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    decode_date_tuple(date_sm, '-');
-                    memcpy(field_tuple.value, date_sm.str().c_str(), 11);
-                } else if (0 == strncmp(tuple_type, "time", 4)) {
-                    field_tuple.value = (void*) (new char[9]);
-                    field_tuple.length = 9;
-                    stringstream time_sm;
-                    ei_decode_tuple_header(buf_, &index_, &type_);
-                    decode_date_tuple(time_sm, ':');
-                    memcpy(field_tuple.value, time_sm.str().c_str(), 9);
-                } else {
-                    field_tuple.value = NULL;
-                    field_tuple.length = 0;
-                }
-                free_string(tuple_type);
+                decode_expr_tuple(tuple_sm);
+                tuple_str = tuple_sm.str();
+                tuple_len = tuple_str.length();
+
+                field_tuple.value = (void*) (new char[tuple_len + 1]);
+                field_tuple.length = tuple_len + 1;
+                memset(field_tuple.value, 0, tuple_len + 1);
+                memcpy(field_tuple.value, tuple_str.c_str(), tuple_len);
                 break;
             default:
                 field_tuple.value = NULL;
@@ -564,6 +555,53 @@ protected:
         sm << decode_int();
         sm << c << decode_int();
         sm << c << decode_int();
+    }
+
+    inline int decode_tuple_length(int* p_index = NULL){
+        if (p_index == NULL) {
+            p_index = &index_;
+        }
+
+        if (ei_decode_tuple_header(buf_, p_index, &size_) == 0) {
+            return size_;
+        } else {
+            return -1;
+        }
+    }
+
+    inline int decode_list_length(int* p_index = NULL){
+        if (p_index == NULL) {
+            p_index = &index_;
+        }
+
+        if (ei_decode_list_header(buf_, p_index, &size_) == 0) {
+            return size_;
+        } else {
+            return -1;
+        }
+    }
+
+    inline int erl_data_type(int* p_index = NULL) {
+        if(p_index == NULL) {
+            p_index = &index_;
+        }
+
+        return ei_get_type(buf_, p_index, &type_, &size_)
+                == 0 ? type_:-1;
+    }
+
+    inline bool decode_null() {
+        int index = index_;
+        char type[10];
+
+        if (ei_get_type(buf_, &index, &type_, &size_) == 0 &&
+                size_ == 4 && ei_decode_atom(buf_, &index, type) == 0 &&
+                strcmp(type, "NULL") == 0) {
+            index_ = index;
+            return true;
+        }
+
+        return false;
     }
 
     /** @brief Free the memory of the function decode_field_value application.
@@ -627,6 +665,7 @@ protected:
     void free_fields(FieldStruct * & field_list, int len);
 
     Connection *conn_; ///< The point to Connection obj, use to connect database.
+    bool muli_tran_flag_; ///< The flag of multiple steps transaction;
     StmtMap *stmt_map_; ///< The pointer to StmtMap.
     char * buf_; ///< The parameters of erlang pass over.
     int type_; ///< Decode type.

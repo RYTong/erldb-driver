@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -22,8 +22,8 @@
  */
 
 #include "SybDBOperation.h"
-#include "base/ConnectionPool.h"
-#include "EiEncoder.h"
+#include "../base/ConnectionPool.h"
+#include "../util/EiEncoder.h"
 
 namespace rytong {
 #define RETURN_ERROR(res, error) {EiEncoder::encode_error_msg(error, res); return true;}
@@ -64,7 +64,7 @@ bool SybDBOperation::exec(ei_x_buff * const res)
     return true;
 }
 
-bool SybDBOperation::trans_begin(ei_x_buff * const res) 
+bool SybDBOperation::trans_begin(ei_x_buff * const res)
 {
     SybConnection* conn = NULL;
     SybStatement* stmt = NULL;
@@ -75,11 +75,11 @@ bool SybDBOperation::trans_begin(ei_x_buff * const res)
     conn = (SybConnection*)conn_;
     stmt = conn->get_statement();
     if (stmt->execute_cmd("BEGIN TRANSACTION")) {
-        EiEncoder::encode_ok_pointer((void*) conn, res);        
+        EiEncoder::encode_ok_pointer((void*) conn, res);
     } else {
         RETURN_ERROR(res, EXECUTE_SQL_ERROR)
     }
-    
+
     return true;
 }
 
@@ -98,7 +98,7 @@ bool SybDBOperation::trans_commit(ei_x_buff * const res)
     } else {
         RETURN_ERROR(res, EXECUTE_SQL_ERROR)
     }
-    
+
     return true;
 }
 
@@ -157,7 +157,7 @@ bool SybDBOperation::prepare_stat_init(ei_x_buff * const res)
         delete stmt;
         EiEncoder::encode_error_msg("already registered prepare name", res);
     }
-    
+
     free_string(name);
     free_string(sql);
 
@@ -260,7 +260,7 @@ bool SybDBOperation::insert(ei_x_buff * const res)
     } else {
         conn = (SybConnection*)conn_;
     }
-    
+
     if (decode_tuple_header() !=2 || !decode_string(table_name)) {
         RETURN_ERROR(res, BAD_ARG_ERROR)
     }

@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -26,7 +26,7 @@
 
 #include <erl_driver.h>
 #include <iostream>
-#include "base/ThreadPool.h"
+#include <unistd.h>
 
 /*
 * R15B changed several driver callbacks to use ErlDrvSizeT and
@@ -38,13 +38,15 @@ typedef int ErlDrvSizeT;
 typedef int ErlDrvSSizeT;
 #endif
 
+#include "ThreadPool.h"
+
 // lib
-#include "EiEncoder.h"
-#include "debug.h"
+#include "../util/EiEncoder.h"
+#include "../util/debug.h"
 
 namespace rytong {
 
-const long MAX_RES_LEN = 10 * 1024 * 1024; ///< The max res size.
+const long MAX_RES_LEN = 1024 * 1024 * 1024; ///< The max res size.
 
 
 /** @brief Driver data struct.
@@ -80,7 +82,7 @@ public:
         // initialization.
         thr_pool_.set(&thr_pool_, len);
     }
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -123,7 +125,7 @@ public:
 
 protected:
     ThreadPool thr_pool_; ///< A ThreadPool instance.
-    
+
 };
-} 
+}
 #endif /* _RYT_ASYNCDRV_H_ */

@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -28,14 +28,14 @@
 
 #include <map>
 #include <string>
-#include "Mutex.h"
+#include "../util/Mutex.h"
 
 using namespace std;
 
 namespace rytong{
 
 typedef map<string, void*>stmt_map; ///< Stmt map.
-    
+
 /** @brief Manage data of prepare statement.
  */
 class StmtMap {
@@ -44,7 +44,7 @@ public:
      *  @return None.
      */
     StmtMap();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -70,7 +70,7 @@ public:
      *  @return The point to stmt data.
      */
     void* remove(const string& key);
-    
+
     /** @brief Remove the point to stmt from the map.
      *  @return The point to stmt data.
      */

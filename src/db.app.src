@@ -1,0 +1,11 @@
+{application, db, [
+    {description, "Erlang database driver"},
+    {vsn, "1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {mod, {db_app, []}},
+    {env, [{threadlen, 10}]}
+ ]}.

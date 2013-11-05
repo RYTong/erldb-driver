@@ -1,6 +1,6 @@
 dnl -*- Mode: autoconf; -*-
 dnl autoconf library script for detection of shared library in different OSs.
-dnl 
+dnl
 dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
 dnl All rights reserved.
 dnl
@@ -17,30 +17,30 @@ if test "$status" = 1 ; then
 fi
 case $system in
     Darwin-*)
-	SHLIB_SUFFIX="dylib"
+    SHLIB_SUFFIX="dylib"
         LD="$CXX"
-	# See otp/lib/crypto build output to find out about the mac build flags.
+        # See otp/lib/crypto build output to find out about the mac build flags.
         LDFLAGS="-bundle -flat_namespace -undefined suppress"
-	CFLAGS="$CFLAGS -fPIC"
-	ECHO="echo"
+        CFLAGS="$CFLAGS -fPIC"
+        ECHO="echo"
         ;;
     Linux*)
         LD="$CXX"
         LDFLAGS="-shared -fpic -ldl"
-	CFLAGS="$CFLAGS -fpic"
+        CFLAGS="$CFLAGS -fpic"
         SHLIB_SUFFIX="so"
-	ECHO="echo -e"
+        ECHO="echo -e"
         ;;
     AIX*)
-	LD="ld"
+        LD="ld"
         LDFLAGS="-bnoentry -bexpall -G"
         CFLAGS="$CFLAGS -fPIC"
         SHLIB_SUFFIX="so"
         ECHO="echo"
-	;;
+        ;;
      *)
         AC_MSG_ERROR([Cannot find how to generate shared library.])
-	;;
+    ;;
 esac
 AC_MSG_RESULT([Done])
 AC_SUBST(LD)

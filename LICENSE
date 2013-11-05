@@ -36,10 +36,10 @@ Modifications. When Covered Code is released as a series of files, a
 Modification is:
 
 A. Any addition to or deletion from the contents of a file containing
-   Original Code or previous Modifications. 
+   Original Code or previous Modifications.
 
 B. Any new file that contains any part of the Original Code or
-   previous Modifications. 
+   previous Modifications.
 
 1.10. ``Original Code'' means Source Code of computer software code
 which is described in the Source Code notice required by Exhibit A as
@@ -74,7 +74,7 @@ claims:
 
 (a) to use, reproduce, modify, display, perform, sublicense and
     distribute the Original Code (or portions thereof) with or without
-    Modifications, or as part of a Larger Work; and 
+    Modifications, or as part of a Larger Work; and
 
 (b) under patents now or hereafter owned or controlled by Initial
     Developer, to make, have made, use and sell (``Utilize'') the
@@ -82,7 +82,7 @@ claims:
     any such patent is reasonably necessary to enable You to Utilize
     the Original Code (or portions thereof) and not to any greater
     extent that may be necessary to Utilize further Modifications or
-    combinations. 
+    combinations.
 
 2.2. Contributor Grant.
 Each Contributor hereby grants You a world-wide, royalty-free,
@@ -92,14 +92,14 @@ claims:
 (a) to use, reproduce, modify, display, perform, sublicense and
     distribute the Modifications created by such Contributor (or
     portions thereof) either on an unmodified basis, with other
-    Modifications, as Covered Code or as part of a Larger Work; and 
+    Modifications, as Covered Code or as part of a Larger Work; and
 
 (b) under patents now or hereafter owned or controlled by Contributor,
     to Utilize the Contributor Version (or portions thereof), but
     solely to the extent that any such patent is reasonably necessary
     to enable You to Utilize the Contributor Version (or portions
     thereof), and not to any greater extent that may be necessary to
-    Utilize further Modifications or combinations. 
+    Utilize further Modifications or combinations.
 
 3. Distribution Obligations.
 
@@ -112,7 +112,7 @@ every copy of the Source Code You distribute. You may not offer or
 impose any terms on any Source Code version that alters or restricts
 the applicable version of this License or the recipients' rights
 hereunder. However, You may include an additional document offering
-the additional rights described in Section 3.5. 
+the additional rights described in Section 3.5.
 
 3.2. Availability of Source Code.
 Any Modification which You contribute must be made available in Source
@@ -151,13 +151,13 @@ origin or ownership of the Covered Code.
     available thereafter and shall take other steps (such as notifying
     appropriate mailing lists or newsgroups) reasonably calculated to
     inform those who received the Covered Code that new knowledge has
-    been obtained. 
+    been obtained.
 
 (b) Contributor APIs.
     If Your Modification is an application programming interface and
     You own or control patents which are reasonably necessary to
     implement that API, you must also include this information in the
-    LEGAL file. 
+    LEGAL file.
 
 3.5. Required Notices.
 You must duplicate the notice in Exhibit A in each file of the Source
@@ -266,7 +266,7 @@ the substantive laws of Sweden. Any dispute, controversy or claim
 arising out of or relating to this License, or the breach, termination
 or invalidity thereof, shall be subject to the exclusive jurisdiction
 of China courts instance.
-	
+
 EXHIBIT A.
 
 ``The contents of this file are subject to the Erlang Database Driver Public License,

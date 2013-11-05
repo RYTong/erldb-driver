@@ -1,3 +1,0 @@
-{application,db_driver}.
-{packages,[]}.
-{modules,[db_api,db_driver,db_server]}.

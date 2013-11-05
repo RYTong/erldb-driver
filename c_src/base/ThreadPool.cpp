@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -21,7 +21,7 @@
  *  @date Created on 2011-4-19
  */
 
-#include "base/ThreadPool.h"
+#include "ThreadPool.h"
 
 using namespace rytong;
 
@@ -34,13 +34,13 @@ ThreadPool::~ThreadPool() {
     }
 
     while(!thr_list_.empty()){
-        pthread_t* thr = thr_list_.front();        
+        pthread_t* thr = thr_list_.front();
         thr_list_.pop();
         pthread_join(*thr, NULL);
         delete thr;
         thr = NULL;
     }
-    
+
     while (0 != q_.size()) {
         ErlAsync* a = q_.front();
         q_.pop();
@@ -51,6 +51,9 @@ ThreadPool::~ThreadPool() {
 void ThreadPool::set(ThreadPool* pool, unsigned long long len) {
     for (unsigned long long i = 0; i < len; i++) {
         pthread_t* thr = new pthread_t();
+        /* FIXME
+         * Should we handle errors if pthread_create failed ?
+         */
         pthread_create(thr, NULL, async_main, pool);
         thr_list_.push(thr);
     }
@@ -59,13 +62,13 @@ void ThreadPool::set(ThreadPool* pool, unsigned long long len) {
 int ThreadPool::do_async(void(*async_invoke)(void*), void* async_data,
         void(*async_free)(void*)) {
     ErlAsync* a = new ErlAsync();
-    rassert(a != NULL);
+    //rassert(a != NULL);
     // cout<<"here to send a job "<<endl;
     if (NULL != a) {
         a->async_data = async_data;
         a->async_invoke = async_invoke;
         a->async_free = async_free;
-        rassert(a->async_invoke != NULL);
+        //rassert(a->async_invoke != NULL);
         if (0 != async_add(a)) {
             //if there is only one free function, we can directly call it and
             //need no more async_free.
@@ -109,7 +112,7 @@ ErlAsync * ThreadPool::async_get() {
         // SysLogger::error("error get lock");
         return NULL;
     }
-    
+
     while (0 == q_.size()) {
         cv_.wait(mtx_);
     }
@@ -127,21 +130,14 @@ ErlAsync * ThreadPool::async_get() {
 void* ThreadPool::async_main(void* arg) {
     ErlAsync* a;
     ThreadPool* pool = (ThreadPool*) arg;
-    while (1) {
-        // cout <<"request a job" <<endl;
-        a = pool->async_get();
-        // cout <<"get a job" <<endl;
-        if (NULL != a) {
-            // ((DrvData*) a->async_data)->conn = conn;
-            (*a->async_invoke)(a->async_data);
-            // (*a->async_free)(a->async_data);
-            delete a;
-            a = NULL;
-        } else {
-            // cout << "\ra is null" << endl;
-            pthread_exit((void *)0);
-        }
+    while (a = pool->async_get()) {
+         // ((DrvData*) a->async_data)->conn = conn;
+        (*a->async_invoke)(a->async_data);
+        // (*a->async_free)(a->async_data);
+        delete a;
+        a = NULL;
     }
+    pthread_exit((void *)0);
     return NULL;
 }
 

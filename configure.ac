@@ -1,5 +1,5 @@
 dnl Configuration script for Erlang Database Driver.
-dnl 
+dnl
 dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
 dnl All rights reserved.
 dnl
@@ -35,6 +35,8 @@ AC_MSG_RESULT([$DB])
 builtin(include, ./build/configure.in.mysql)
 builtin(include, ./build/configure.in.oracle)
 builtin(include, ./build/configure.in.sybase)
+builtin(include, ./build/configure.in.db2)
+builtin(include, ./build/configure.in.informix)
 AC_SUBST(DB)
 
 if test "x$DB" == "x" ; then

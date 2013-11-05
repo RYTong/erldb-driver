@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -26,9 +26,9 @@
 #ifndef _RYT_CONNECTION_POOL_H
 #define _RYT_CONNECTION_POOL_H
 
-#include "base/Connection.h"
-#include "Mutex.h"
-#include "base/DrvConf.h"
+#include "Connection.h"
+#include "../util/Mutex.h"
+#include "DrvConf.h"
 #include <queue>
 
 namespace rytong {
@@ -41,12 +41,30 @@ public:
     /** @brief Constructor for the class.
      *  @return None.
      */
-    ConnectionPool(DrvConf conf);
-    
+    ConnectionPool(DatabaseType type, const char* host, const char* user,
+            const char* password, const char* db_name, unsigned int port, int size){
+        set_pool(type, host, user, password, db_name, port, size);
+    }
+
+    /** @brief Constructor for the class.
+     *  @return None.
+     */
+    ConnectionPool(DrvConf conf){
+        set_pool(conf.db_type, conf.host, conf.user,
+            conf.password, conf.db_name, conf.port, conf.poolsize);
+    }
+
     /** @brief Destructor for the class.
      *  @return None.
      */
     ~ConnectionPool();
+
+    /** @brief Create a connection.
+     *  @param .
+     *  @return The pointer to the connection.
+     */
+    static Connection* create_conn(DatabaseType type, const char* host, const char* user,
+            const char* password, const char* db_name, unsigned int port);
 
     /** @brief Add connection to queue.
      *  @param conn The pointer to the connection.
@@ -59,19 +77,19 @@ public:
      */
     Connection* pop();
 
-    /** @brief Create a connection.
-     *  @param conf Connect args by DrvConf struct.
-     *  @return The pointer to the connection.
-     */
-    Connection* create_conn(DrvConf conf);
 
 private:
     ConnectionPool(const ConnectionPool&);
     ConnectionPool & operator =(const ConnectionPool&);
 
+
+    void set_pool(DatabaseType type, const char* host, const char* user,
+            const char* password, const char* db_name, unsigned int port, int size);
+
+
     pool pool_; // connection pool
     Mutex mutex_; // operation mutex
-    Condition cond_; // operation condition
+
 };
 }/* end of namespace rytong */
 #endif    /* _RYT_CONNECTION_POOL_H */

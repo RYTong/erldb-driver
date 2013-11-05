@@ -50,7 +50,7 @@ else
     else
         SYBASE_CFLAGS="-DSYB_LP64 -D_REENTRANT -DUSE_SYBASE -I${SYBASE_INCL}"
         SYBASE_SRC="c_src/sybase/SybUtils.cpp c_src/sybase/SybConnection.cpp c_src/sybase/SybStatement.cpp c_src/sybase/SybDBOperation.cpp"
-	SYBASE_LIBS="-L$SYBASE_LIB -lsybct_r64"
+    SYBASE_LIBS="-L$SYBASE_LIB -lsybct_r64"
     fi
 fi
 

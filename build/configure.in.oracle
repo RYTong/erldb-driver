@@ -1,6 +1,6 @@
 dnl -*- Mode: autoconf; -*-
 dnl autoconf library script for detection of oracle libraries.
-dnl 
+dnl
 dnl Copyright (c) 2009-2010 Beijing RYTong Information Technologies, Ltd.
 dnl All rights reserved.
 dnl
@@ -38,7 +38,7 @@ ORACLE_LIBS=""
 
 if test "x$ORACLE_INCL" = "x" ; then
     AC_MSG_ERROR([Cannot find ORACLE HEAD FILE!])
-else 
+else
     # Detecting ORACLE libraries
     AC_MSG_CHECKING([ORACLE library])
     ORACLE_LIB=""
@@ -55,7 +55,7 @@ else
     else
         ORACLE_CFLAGS="-DUSE_ORACLE -I${ORACLE_INCL}"
         ORACLE_SRC="c_src/oracle/OracleConnection.cpp c_src/oracle/OracleDBOperation.cpp"
-	ORACLE_LIBS="-L$ORACLE_LIB -locci -lclntsh"
+        ORACLE_LIBS="-L$ORACLE_LIB -locci -lclntsh"
     fi
 fi
 

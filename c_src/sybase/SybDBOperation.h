@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -25,9 +25,9 @@
 #define _SYBDBOPERATION_H
 
 #include "SybUtils.h"
-#include "base/DBOperation.h"
-#include "base/DBException.h"
-#include "base/StmtMap.h"
+#include "../base/DBOperation.h"
+#include "../base/DBException.h"
+#include "../base/StmtMap.h"
 #include "SybConnection.h"
 
 namespace rytong {
@@ -43,7 +43,7 @@ namespace rytong {
 
 /** @brief Derived class for sybase to represent operations of database.
  */
-class SybDBOperation : public DBOperation {    
+class SybDBOperation : public DBOperation {
 public:
     /** @brief Defined binary type.
      */
@@ -64,25 +64,25 @@ public:
         int ms;     ///< Millisecond.
         int Ms;     ///< Microsecond.
     } MyDateTime;
-    
+
     /** @brief Constructor for the class.
      *  @return None.
      */
     SybDBOperation();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
     ~SybDBOperation();
-    
+
     static bool release_stmt(void* data) {
         SybStatement* stmt = (SybStatement*) data;
         stmt->prepare_release();
         delete stmt;
-        
+
         return true;
     }
-    
+
     /** @brief Execute interface.
      *  @see DBOperation::exec.
      */
@@ -137,7 +137,7 @@ public:
      *  @see DBOperation::prepare_stat_release.
      */
     bool prepare_stat_release(ei_x_buff * const res);
-    
+
 private:
     SybDBOperation & operator =(const SybDBOperation&);
 
@@ -154,7 +154,7 @@ private:
     inline bool alloc_binary(MyBinary* bin, long length)
     {
         bin->len = length;
-        bin->value = (char*)malloc(length * sizeof(char));
+        bin->value = (char*)malloc((length + 1) * sizeof(char));
         return bin->value != NULL;
     }
 
@@ -394,12 +394,12 @@ private:
     inline bool decode_datetime4(MyDateTime* datetime, int* p_index = NULL)
     {
         long hour, minutes;
-        
+
         if (p_index == NULL) {
             p_index = &index_;
         }
 
-        if (decode_tuple_header(p_index) == 2 
+        if (decode_tuple_header(p_index) == 2
                 && decode_date(datetime, p_index)
                 && decode_tuple_header(p_index) == 2
                 && decode_integer(hour, p_index)
@@ -453,11 +453,11 @@ private:
 #endif
 
     /** is null */
-    inline bool is_null(int* p_index = NULL) 
+    inline bool is_null(int* p_index = NULL)
     {
         int retcode;
         char type[10];
-        
+
         if (p_index == NULL) {
             p_index = &index_;
         }
@@ -685,7 +685,7 @@ private:
     {
         bool setcode;
         MyBinary bin;
-        
+
         if (!decode_binary(&bin)) {
             return false;
         }
@@ -796,7 +796,7 @@ private:
         if (retcode != 0) {
             return false;
         }
-        
+
         length = size_;
         unichar = (unsigned short*)malloc(length * sizeof(unsigned short));
 
@@ -848,7 +848,7 @@ private:
         return setcode;
     }
 
-    bool decode_and_set_date(SybStatement* stmt, int index) 
+    bool decode_and_set_date(SybStatement* stmt, int index)
     {
         MyDateTime datetime;
 
@@ -929,7 +929,7 @@ private:
                 datetime.seconds, datetime.ms, datetime.Ms);
     }
 #endif
-    
+
     bool decode_and_set_tinyint(SybStatement* stmt, int index)
     {
         int retcode = -1;
@@ -956,7 +956,7 @@ private:
         return stmt->set_smallint(index, (short)longint);
     }
 
-    bool decode_and_set_int(SybStatement* stmt, int index) 
+    bool decode_and_set_int(SybStatement* stmt, int index)
     {
         int retcode = -1;
         long longint;
@@ -982,7 +982,7 @@ private:
         return stmt->set_bigint(index, bigint);
     }
 
-    bool decode_and_set_usmallint(SybStatement* stmt, int index) 
+    bool decode_and_set_usmallint(SybStatement* stmt, int index)
     {
         int retcode = -1;
         unsigned long longint;
@@ -995,7 +995,7 @@ private:
         return stmt->set_usmallint(index, (unsigned short)longint);
     }
 
-    bool decode_and_set_uint(SybStatement* stmt, int index) 
+    bool decode_and_set_uint(SybStatement* stmt, int index)
     {
         int retcode = -1;
         unsigned long longint;
@@ -1021,7 +1021,7 @@ private:
         return stmt->set_ubigint(index, bigint);
     }
 
-    bool decode_and_set_decimal(SybStatement* stmt, int index) 
+    bool decode_and_set_decimal(SybStatement* stmt, int index)
     {
         char str[40];
 
@@ -1033,7 +1033,7 @@ private:
         return stmt->set_decimal(index, str);
     }
 
-    bool decode_and_set_numeric(SybStatement* stmt, int index) 
+    bool decode_and_set_numeric(SybStatement* stmt, int index)
     {
         char str[40];
 
@@ -1045,7 +1045,7 @@ private:
         return stmt->set_numeric(index, str);
     }
 
-    bool decode_and_set_float(SybStatement* stmt, int index) 
+    bool decode_and_set_float(SybStatement* stmt, int index)
     {
         int retcode;
         double data;
@@ -1058,7 +1058,7 @@ private:
         return stmt->set_float(index, (float)data);
     }
 
-    bool decode_and_set_real(SybStatement* stmt, int index) 
+    bool decode_and_set_real(SybStatement* stmt, int index)
     {
         int retcode;
         double data;
@@ -1099,7 +1099,7 @@ private:
     bool decode_and_input_value(stringstream& stream)
     {
         bool retcode;
-        
+
         if (is_null()) {
             stream << "NULL";
             return true;
@@ -1108,10 +1108,10 @@ private:
         switch (get_erl_type()) {
             case ERL_NIL_EXT:
                 if (retcode = decode_empty_list()) {
-                    stream << "\"\"";
+                    stream << "''";
                 }
                 break;
-                
+
             case ERL_STRING_EXT:
                 retcode = decode_and_input_string(stream);
                 break;
@@ -1130,11 +1130,11 @@ private:
             case ERL_LARGE_BIG_EXT:
                 retcode = decode_and_input_integer(stream);
                 break;
-                
+
             case ERL_FLOAT_EXT:
                 retcode = decode_and_input_float(stream);
                 break;
-                
+
             case ERL_SMALL_TUPLE_EXT:
                 retcode = decode_and_input_cunstom(stream);
                 break;
@@ -1146,16 +1146,30 @@ private:
         return retcode;
     }
 
-    bool decode_and_input_string(stringstream& stream) 
+    bool decode_and_input_string(stringstream& stream)
     {
+        char* tmp   = NULL;
         char* value = NULL;
-        
-        if (!decode_string(value)) {
+        int i = 0;
+        int j = 0;
+
+        if (!decode_string(tmp)) {
             return false;
         }
-        stream << " \"" << value << "\"";
-        free_string(value);
-        
+        value = (char*)malloc(strlen(tmp) * 2 + 1);
+        while (tmp[i] != 0) {
+            value[j] = tmp[i];
+            if (tmp[i] == '\'') {
+                value[++j] = '\'';
+            }
+            ++i;
+            ++j;
+        }
+        value[j] = 0;
+        stream << " '" << value << "'";
+        free_string(tmp);
+        free(value);
+
         return true;
     }
 
@@ -1218,7 +1232,7 @@ private:
         } else {
             stream << " NULL";
         }
-        
+
         return true;
     }
 
@@ -1253,7 +1267,7 @@ private:
     bool decode_and_input_cunstom(stringstream& stream)
     {
         bool retcode;
-        
+
         switch (decode_custom_type()) {
             case MY_NUMBER_TYPE:
                 retcode = decode_and_input_strnumber(stream);
@@ -1284,7 +1298,7 @@ private:
                 retcode = decode_and_input_bigtime(stream);
                 break;
 #endif
-                
+
             default:
                 retcode = false;
         }
@@ -1319,7 +1333,7 @@ private:
         to_16hex(data, 4, (unsigned long)days);
         data[8] = 0;
         stream << " 0x" << data;
-        
+
         return true;
     }
 
@@ -1449,10 +1463,10 @@ private:
                     free_string(value);
                 }
                 break;
-                
+
             case ERL_NIL_EXT:
                 if (retcode = decode_empty_list()) {
-                    sqlstream << " \"\"";
+                    sqlstream << " ''";
                 }
                 break;
 
@@ -1501,110 +1515,118 @@ private:
     bool make_rela_expr(stringstream &sqlstream, long key)
     {
         bool retcode;
-        
+
         switch(key) {
-            case SQL_AND:
+            case DB_DRV_SQL_AND:
                 retcode = make_and(sqlstream);
                 break;
 
-            case SQL_OR:
+            case DB_DRV_SQL_OR:
                 retcode = make_or(sqlstream);
                 break;
 
-            case SQL_NOT:
+            case DB_DRV_SQL_NOT:
                 retcode = make_not(sqlstream);
                 break;
 
-            case SQL_LIKE:
+            case DB_DRV_SQL_LIKE:
                 retcode = make_like(sqlstream);
                 break;
 
-            case SQL_AS:
+            case DB_DRV_SQL_AS:
                 retcode = make_as(sqlstream);
                 break;
 
-            case SQL_EQUAL:
+            case DB_DRV_SQL_EQUAL:
                 retcode = make_equal(sqlstream);
                 break;
 
-            case SQL_GREATER:
+            case DB_DRV_SQL_GREATER:
                 retcode = make_greater(sqlstream);
                 break;
 
-            case SQL_GREATER_EQUAL:
+            case DB_DRV_SQL_GREATER_EQUAL:
                 retcode = make_greater_equal(sqlstream);
                 break;
 
-            case SQL_LESS:
+            case DB_DRV_SQL_LESS:
                 retcode = make_less(sqlstream);
                 break;
 
-            case SQL_LESS_EQUAL:
+            case DB_DRV_SQL_LESS_EQUAL:
                 retcode = make_less_equal(sqlstream);
                 break;
 
-            case SQL_JOIN:
+            case DB_DRV_SQL_JOIN:
                 retcode = make_join(sqlstream);
                 break;
 
-            case SQL_LEFT_JOIN:
+            case DB_DRV_SQL_LEFT_JOIN:
                 retcode = make_left_join(sqlstream);
                 break;
 
-            case SQL_RIGHT_JOIN:
+            case DB_DRV_SQL_RIGHT_JOIN:
                 retcode = make_right_join(sqlstream);
                 break;
 
-            case SQL_NOT_EQUAL:
+            case DB_DRV_SQL_NOT_EQUAL:
                 retcode = make_not_equal(sqlstream);
                 break;
 
-            case SQL_ORDER:
+            case DB_DRV_SQL_ORDER:
                 retcode = make_order(sqlstream);
                 break;
 
-            case SQL_LIMIT:
+            case DB_DRV_SQL_LIMIT:
                 retcode = make_limit(sqlstream);
                 break;
 
-            case SQL_DOT:
+            case DB_DRV_SQL_DOT:
                 retcode = make_dot(sqlstream);
                 break;
 
-            case SQL_GROUP:
+            case DB_DRV_SQL_GROUP:
                 retcode = make_group(sqlstream);
                 break;
 
-            case SQL_HAVING:
+            case DB_DRV_SQL_HAVING:
                 retcode = make_having(sqlstream);
                 break;
 
-            case SQL_BETWEEN:
+            case DB_DRV_SQL_BETWEEN:
                 retcode = make_between(sqlstream);
                 break;
 
-            case SQL_ADD:
+            case DB_DRV_SQL_ADD:
                 retcode = make_add(sqlstream);
                 break;
 
-            case SQL_SUB:
+            case DB_DRV_SQL_SUB:
                 retcode = make_sub(sqlstream);
                 break;
 
-            case SQL_MUL:
+            case DB_DRV_SQL_MUL:
                 retcode = make_mul(sqlstream);
                 break;
 
-            case SQL_DIV:
+            case DB_DRV_SQL_DIV:
                 retcode = make_div(sqlstream);
                 break;
 
-            case SQL_FUN:
+            case DB_DRV_SQL_FUN:
                 retcode = make_fun(sqlstream);
                 break;
 
-            case SQL_INNER_JOIN:
+            case DB_DRV_SQL_INNER_JOIN:
                 retcode = make_inner_join(sqlstream);
+                break;
+
+            case DB_DRV_SQL_IS_NULL:
+                retcode = make_is_null(sqlstream);
+                break;
+
+            case DB_DRV_SQL_IS_NOT_NULL:
+                retcode = make_is_not_null(sqlstream);
                 break;
 
             default:
@@ -1675,7 +1697,7 @@ private:
     bool make_as(stringstream &sqlstream)
     {
         sqlstream << " AS";
-        
+
         return  make_where_expr(sqlstream);
     }
 
@@ -1684,9 +1706,9 @@ private:
         if (!make_where_expr(sqlstream)) {
             return false;
         }
-        
+
         sqlstream << " =";
-        
+
         return  make_where_expr(sqlstream);
     }
 
@@ -1778,7 +1800,7 @@ private:
             return false;
         }
         sqlstream << " !=";
-        
+
         return  make_where_expr(sqlstream);
     }
 
@@ -1786,7 +1808,7 @@ private:
     {
         int size;
         long flag;
-        
+
         sqlstream << " ORDER BY";
         if ((size = decode_list_header()) < 0) {
             return false;
@@ -1861,7 +1883,7 @@ private:
     bool make_having(stringstream &sqlstream)
     {
         sqlstream << " HAVING";
-        
+
         return make_where_expr(sqlstream);
     }
 
@@ -1923,11 +1945,11 @@ private:
         return make_where_expr(sqlstream);
     }
 
-    bool make_fun(stringstream &sqlstream) 
+    bool make_fun(stringstream &sqlstream)
     {
         int type;
         int size;
-        
+
         if (!make_where_expr(sqlstream)) {
             return false;
         }
@@ -1981,6 +2003,26 @@ private:
         sqlstream << " ON";
 
         return make_where_expr(sqlstream);
+    }
+
+    bool make_is_null(stringstream &sqlstream)
+    {
+        if (!make_where_expr(sqlstream)) {
+            return false;
+        }
+        sqlstream << " IS NULL";
+
+        return true;
+    }
+
+    bool make_is_not_null(stringstream &sqlstream)
+    {
+        if (!make_where_expr(sqlstream)) {
+            return false;
+        }
+        sqlstream << " IS NOT NULL";
+
+        return true;
     }
 };
 }/* end of namespace rytong */

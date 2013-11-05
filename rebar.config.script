@@ -1,0 +1,157 @@
+%% io:format("CONFIG = ~p~n", [CONFIG]),
+%% io:format("SCRIPT = ~p~n", [SCRIPT]),
+
+Drivers = proplists:get_value(drivers, CONFIG, []),
+Debug = proplists:get_value(debug, CONFIG, false),
+
+{DebugErlFlag, DebugDriverFlag} =
+    case Debug of
+        true ->
+            {[debug_info, {d, ewp_debug_flag}], " -DDEBUG"};
+        false ->
+            {[no_debug_info], []}
+    end,
+
+ErlOpts = DebugErlFlag,
+
+{DriverSrcs, DriverCFlagsList, DriverLDFlagsList} =
+    lists:unzip3(lists:map(
+        fun(X) ->
+            ConfigFile = lists:concat(["build/", X, ".config"]),
+            case file:consult(ConfigFile) of
+                {ok, DriverConfigs} ->
+                    CheckEnvs = proplists:get_value(check_envs, DriverConfigs, []),
+                    lists:map(
+                        fun(Env) ->
+                            case os:getenv(Env) of
+                                false ->
+                                    throw(lists:concat([Env, " is not define"]));
+                                _ ->
+                                    go_on
+                            end
+                        end, CheckEnvs),
+
+                    Srcs = proplists:get_value(srcs, DriverConfigs, []),
+                    DrvCFlags = proplists:get_value(cflags, DriverConfigs, []),
+                    DrvLDFlags = proplists:get_value(ldflags, DriverConfigs, []),
+
+                    IncludeSearchDirs = proplists:get_value(include_search_dirs, DriverConfigs, []),
+                    LibSearchDirs = proplists:get_value(lib_search_dirs, DriverConfigs, []),
+                    IncludeFiles = proplists:get_value(include_files, DriverConfigs, []),
+                    LibFiles = proplists:get_value(lib_files, DriverConfigs, []),
+
+                    IncludeDirs =
+                        lists:map(
+                            fun(IncFile) ->
+                                lists:foldl(
+                                    fun(Y, Acc) ->
+                                        Dirs = os:cmd(lists:concat(["find ", Y, " -name '", IncFile, "'"])),
+                                        case re:split(Dirs, "\n", [{return, list}]) of
+                                            [[]] ->
+                                                Acc;
+                                            ["find" ++ _|_] ->
+                                                Acc;
+                                            [D|_] ->
+                                                case Acc of
+                                                    [] ->
+                                                        "-I" ++ filename:dirname(D);
+                                                    _ ->
+                                                        Acc
+                                                end
+                                        end
+                                    end, [], IncludeSearchDirs)
+                            end, IncludeFiles),
+                    IncludeStr = string:join(IncludeDirs, " "),
+
+                    LibDirs =
+                        lists:map(
+                            fun(LibFile) ->
+                                lists:foldl(
+                                    fun(Y, Acc) ->
+                                        Dirs = os:cmd(lists:concat(["find ", Y, " -name 'lib", LibFile, ".*'"])),
+                                        case re:split(Dirs, "\n", [{return, list}]) of
+                                            [[]] ->
+                                                Acc;
+                                            ["find" ++ _|_] ->
+                                                Acc;
+                                            [D|_] ->
+                                                case Acc of
+                                                    [] ->
+                                                        lists:concat(["-L", filename:dirname(D), " -l", LibFile]);
+                                                    _ ->
+                                                        Acc
+                                                end
+                                        end
+                                    end, [], LibSearchDirs)
+                            end, LibFiles),
+                    LibDirStr = string:join(LibDirs, " "),
+
+                    CFlags = DrvCFlags ++ " " ++ IncludeStr,
+                    LDFlags = DrvLDFlags ++ " " ++ LibDirStr,
+
+                    {Srcs, CFlags, LDFlags};
+                {error, Error} ->
+                    throw(lists:concat(["error config file ", ConfigFile, " :", Error]))
+            end
+        end, Drivers)),
+
+PortSpecs = [{"priv/database_drv.so", [
+    "c_src/*.cpp",
+    "c_src/base/*.cpp",
+    "c_src/util/*.cpp"] ++ lists:merge(DriverSrcs)}],
+
+DriverCFlags = string:join(DriverCFlagsList, " ") ++ DebugDriverFlag,
+DriverLDFlags = "-lpthread " ++ string:join(DriverLDFlagsList, " "),
+
+PortEnv = [
+    {"CC", "gcc"},
+    {"CXX", "g++"},
+    {"LD", "g++"},
+    {"DRV_CFLAGS" , "-MD -g3 -Wall -fpic $ERL_CFLAGS " ++ DriverCFlags},
+    {"DRV_LDFLAGS", "-shared -fpic -ldl $ERL_LDFLAGS " ++ DriverLDFlags},
+
+    {"aix", "CC", "gxlc"},
+    {"aix", "CXX", "gxlc++"},
+    {"aix", "LD", "xlc++ -qmkshrobj"},
+    {"aix", "DRV_CFLAGS" , "-MD -fPIC $ERL_CFLAGS " ++ DriverCFlags},
+    {"aix", "DRV_LDFLAGS", "-bnoentry -bexpall -G $ERL_LDFLAGS " ++ DriverLDFlags},
+
+    {"darwin", "DRV_CFLAGS" , "-MD -fPIC $ERL_CFLAGS " ++ DriverCFlags},
+    {"darwin", "DRV_LDFLAGS", "-bundle -flat_namespace -undefined suppress $ERL_LDFLAGS " ++ DriverLDFlags}
+    %% {".*", "CXXFLAGS", "$CXXFLAGS -g -Wall -Werror -O3"},
+    %%
+    %% {"(linux|solaris|freebsd|netbsd|openbsd|dragonfly|darwin)",
+    %%     "LDFLAGS", "$LDFLAGS -lstdc++"},
+    %%
+    %% OS X Leopard flags for 64-bit
+    %% {"darwin9.*-64$", "CXXFLAGS", "-m64"},
+    %% {"darwin9.*-64$", "LDFLAGS", "-arch x86_64"}
+    %%
+    %% %% OS X Snow Leopard flags for 32-bit
+    %% {"darwin10.*-32$", "CXXFLAGS", "-m32"},
+    %% {"darwin10.*-32$", "LDFLAGS", "-arch i386"}
+],
+
+ChangeConfig = [
+    {port_specs, PortSpecs},
+    {port_env, PortEnv},
+    {erl_opts, ErlOpts},
+    {del, debug},
+    {del, drivers}
+],
+
+Config =
+    lists:foldl(
+        fun({del, Key}, Acc) ->
+            lists:keydelete(Key, 1, Acc);
+        ({Key, Value}, Acc) ->
+            case lists:keymember(Key, 1, Acc) of
+                true ->
+                    lists:keyreplace(Key, 1, Acc, {Key, Value});
+                false ->
+                    [{Key, Value}|Acc]
+            end
+        end, CONFIG, ChangeConfig),
+
+%% io:format("Config = ~p~n", [Config]),
+Config.

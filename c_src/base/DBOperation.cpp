@@ -23,18 +23,24 @@
  *  @date Created on 2010-1-30
  */
 
-#include "base/DBOperation.h"
-#include "base/ConnectionPool.h"
-#include "EiEncoder.h"
-#include "SysLogger.h"
+#include "DBOperation.h"
+#include "ConnectionPool.h"
+#include "../util/EiEncoder.h"
+#include "../util/SysLogger.h"
 #ifdef USE_MYSQL
-#include "mysql/MysqlDBOperation.h"
+#include "../mysql/MysqlDBOperation.h"
 #endif
 #ifdef USE_ORACLE
-#include "oracle/OracleDBOperation.h"
+#include "../oracle/OracleDBOperation.h"
 #endif
 #ifdef USE_SYBASE
-#include "sybase/SybDBOperation.h"
+#include "../sybase/SybDBOperation.h"
+#endif
+#ifdef USE_DB2
+#include "../DB2/DB2Operation.h"
+#endif
+#ifdef USE_INFORMIX
+#include "../informix/InformixOperation.h"
 #endif
 
 using namespace rytong;
@@ -61,6 +67,16 @@ DBOperation* DBOperation::create(DatabaseType db_type) {
 #ifdef USE_SYBASE
         case SYBASE_DB:
             db = new SybDBOperation();
+            break;
+#endif
+#ifdef USE_DB2
+        case DB2_DB:
+            db = new DB2Operation();
+            break;
+#endif
+#ifdef USE_INFORMIX
+        case INFORMIX_DB:
+            db = new InformixOperation();
             break;
 #endif
         default:

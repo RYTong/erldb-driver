@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -28,7 +28,7 @@
 
 #include <string>
 #include <iostream>
-#include "base/DrvConf.h"
+#include "DrvConf.h"
 using namespace std;
 
 namespace rytong {
@@ -40,7 +40,7 @@ public:
      *  @return None.
      */
     Connection();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -63,6 +63,17 @@ public:
      */
     const char* get_db_name() {
         return db_name_;
+    }
+
+    /** @brief Get database type.
+     *  @return Database type.
+     */
+    const DatabaseType get_db_type() {
+        return db_type_;
+    }
+
+    void set_db_type(DatabaseType db_type) {
+        db_type_ = db_type;
     }
 
     /** @brief Connect to database.
@@ -93,10 +104,11 @@ public:
 
 protected:
     char* db_name_; // Database name.
+    DatabaseType db_type_; // Database type.
 
 private:
     // These functions are not implemented to prohibit copy construction
-    // and assignment by value.   
+    // and assignment by value.
     Connection & operator=(const Connection &);
     Connection(const Connection &);
 };

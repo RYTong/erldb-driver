@@ -6,12 +6,19 @@
 
 # Variables
 SRC_TOP = @SRC_TOP@
+SYSTEM=@SYSTEM@
 
 SHELL = /bin/sh
 ECHO = @ECHO@
+ifeq ($(SYSTEM), AIX)
+CC = gxlc
+CXX = gxlc++
+LD = xlc++ -qmkshrobj
+else
 CC = @CC@
 CXX = @CXX@
 LD = @LD@
+endif
 AR = ar rucs
 ERL = @ERLANG@
 ERL_ROOT = @ERL_ROOT@
@@ -20,7 +27,7 @@ ERL_DRV = @ERL_HOME@/erlang/usr
 DIALYZER = @ERL_HOME@/erlang/bin/dialyzer
 ERL_LIBDIR = @ERL_LIBDIR@
 
-CFLAGS = @CFLAGS@ @CPPFLAGS@ @MYSQL_CFLAGS@ @ORACLE_CFLAGS@ @SYBASE_CFLAGS@
+CFLAGS = @CFLAGS@ @CPPFLAGS@ @MYSQL_CFLAGS@ @ORACLE_CFLAGS@ @SYBASE_CFLAGS@ @DB2_CFLAGS@ @INFORMIX_CFLAGS@
 LDFLAGS = @LDFLAGS@
 SHLIB_SUFFIX = @SHLIB_SUFFIX@
 CUR_DIR = $(shell pwd)
@@ -28,40 +35,46 @@ DRI_LIB = $(SRC_TOP)/priv
 MYSQL_SRC = @MYSQL_SRC@
 ORACLE_SRC = @ORACLE_SRC@
 SYBASE_SRC = @SYBASE_SRC@
+DB2_SRC = @DB2_SRC@
+INFORMIX_SRC = @INFORMIX_SRC@
 
 APPNAME = db_driver
 VERSION = 1.0.0
 TARGETDIR = $(APPNAME)-$(VERSION)
 
-# NOTE: we include both erl_driver and erl_interface so that we can 
+# NOTE: we include both erl_driver and erl_interface so that we can
 # use either one.
 INCLS =\
-    -I$(ERL_DRV)/include \
-    -I$(ERL_ROOT)/include \
-    -I$(ERL_INTF_ROOT)/include \
-    -I$(CUR_DIR)/c_src \
-    -I$(CUR_DIR)/c_src/util
+	-I$(ERL_DRV)/include \
+	-I$(ERL_ROOT)/include \
+	-I$(ERL_INTF_ROOT)/include \
+	-I$(CUR_DIR)/c_src \
+	-I$(CUR_DIR)/c_src/util \
+	-I$(CUR_DIR)/../libewp
 
-LIBS = @MYSQL_LIBS@ @ORACLE_LIBS@ @SYBASE_LIBS@ -L$(ERL_INTF_ROOT)/lib -L$(ERL_DRV)/lib -lei -lpthread
+LIBS = @MYSQL_LIBS@ @ORACLE_LIBS@ @SYBASE_LIBS@ @DB2_LIBS@ @INFORMIX_LIBS@ -L$(ERL_INTF_ROOT)/lib -L$(ERL_DRV)/lib -lei -lpthread
 
 # NOTE: We *must* define the following two variables in order for
 # Makefile.include.c_build to work!  These two variables must be in the names
 # of C_SRCS and CXX_SRCS.
-C_SRCS = 
+C_SRCS =
 CXX_SRCS =\
-    c_src/database_drv.cpp \
-    c_src/base/AsyncDrv.cpp \
-    c_src/base/ThreadPool.cpp \
-    c_src/base/DatabaseDrv.cpp \
-    c_src/util/SysLogger.cpp \
-    c_src/util/TimeVal.cpp \
-    c_src/base/StmtMap.cpp \
-    c_src/base/DBOperation.cpp \
-    c_src/base/ConnectionPool.cpp \
-    c_src/base/Connection.cpp \
-    $(MYSQL_SRC) \
-    $(ORACLE_SRC) \
-    $(SYBASE_SRC)
+	c_src/database_drv.cpp \
+	c_src/base/AsyncDrv.cpp \
+	c_src/base/ThreadPool.cpp \
+	c_src/base/DatabaseDrv.cpp \
+	c_src/util/EWPString.cpp \
+	c_src/util/SysLogger.cpp \
+	c_src/util/TimeVal.cpp \
+	c_src/base/StmtMap.cpp \
+	c_src/base/DBOperation.cpp \
+	c_src/base/ConnectionPool.cpp \
+	c_src/base/Connection.cpp \
+	$(MYSQL_SRC) \
+	$(ORACLE_SRC) \
+	$(SYBASE_SRC) \
+	$(DB2_SRC) \
+	$(INFORMIX_SRC)
 
 OBJS = $(CXX_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 
@@ -69,7 +82,10 @@ GOAL = $(DRI_LIB)/database_drv.so
 
 .PHONY: all docs doc libdoc clean docsclean distclean
 
-all: ebin $(GOAL)
+all: ebin $(GOAL) app
+
+app:
+	cp src/db.app.src $(EBIN_DIR)/db.app
 
 # Build rules
 ERL_SRCDIR = src
@@ -98,7 +114,7 @@ uninstall:
 	rm -rfv $(ERL_LIBDIR)/$(TARGETDIR)
 
 clean:
-	rm -f c_src/*.o c_src/*/*.o $(GOAL) $(EBIN_DIR)/*.beam
+	rm -f c_src/*.o c_src/*/*.o $(GOAL) $(EBIN_DIR)/*.beam $(EBIN_DIR)/db.app
 
 docsclean:
 	rm -fv doc/*.html
@@ -109,5 +125,5 @@ docsclean:
 
 distclean: clean docsclean
 	rm -f Emakefile Makefile config.cache config.log \
-	  lib/* ebin/* c_src/*~ src/*~ *~ include/emagick_config.h include/*~ 
+	  lib/* ebin/* c_src/*~ src/*~ *~ include/emagick_config.h include/*~
 	rm -rf autom4te.cache .deps

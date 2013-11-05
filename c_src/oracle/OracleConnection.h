@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * The contents of this file are subject to the Erlang Database Driver
- * Public License Version 1.0, (the "License"); you may not use this 
+ * Public License Version 1.0, (the "License"); you may not use this
  * file except in compliance with the License. You should have received
  * a copy of the Erlang Database Driver Public License along with this
  * software. If not, it can be retrieved via the world wide web at
@@ -25,7 +25,7 @@
 #define _RYT_ORACLE_CONNECTION_H
 #include <occi.h>
 #include <ei.h>
-#include "base/Connection.h"
+#include "../base/Connection.h"
 
 namespace rytong {
 /** @brief Oracle connection class.
@@ -36,7 +36,7 @@ public:
      *  @return None.
      */
     OracleConnection();
-    
+
     /** @brief Destructor for the class.
      *  @return None.
      */
@@ -57,7 +57,9 @@ public:
      */
     bool connect(const char *host, const char *user, const char *password,
         const char *db_name, unsigned int port);
-    
+
+    bool reconnect();
+
     /** @brief Get the auto_commit_.
      *  @return The value of auto_commit_.
      */
@@ -74,6 +76,12 @@ private:
 
     oracle::occi::Connection* conn_; // Oracle connection object.
     bool auto_commit_; // Auto commit flag.
+    int counter_;
+    oracle::occi::Environment* env_;
+    char user_[128];
+    char password_[128];
+    char db_name_[128];
+    int port_;
 };
 }/* end of namespace rytong */
 #endif /* _RYT_ORACLE_CONNECTION_H */
