@@ -413,6 +413,14 @@ expr({date, Expr}) ->
     {get_keyword_value(date), Expr};
 expr({time, Expr}) ->
     {get_keyword_value(time), Expr};
+expr({timestamp, Expr}) ->
+    {get_keyword_value(timestamp), Expr};
+expr({interval_ym, Expr}) ->
+    {get_keyword_value(interval_ym), Expr};
+expr({interval_ds, Expr}) ->
+    {get_keyword_value(interval_ds), Expr};
+expr({bfile, Expr}) ->
+    {get_keyword_value(bfile), Expr};
 
 expr(Expr) ->
     Expr.

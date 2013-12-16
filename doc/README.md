@@ -113,7 +113,6 @@ following Erlang term to your db.conf file:
                 {host, "localhost"},
                 {user, "root"},
                 {password, ""},
-                {threadlength, 10},
                 {poolsize, 8}]}.
 ```
 
