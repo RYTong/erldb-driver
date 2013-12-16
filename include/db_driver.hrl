@@ -112,7 +112,11 @@
     {'is_not_null',28},
     {datetime,     29},
     {date,         30},
-    {time,         31}
+    {time,         31},
+    {timestamp,    32},
+    {interval_ym,  33},
+    {interval_ds,  34},
+    {bfile,        35}
 ]).
 
 %% Default database config.

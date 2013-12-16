@@ -75,7 +75,11 @@ enum SqlKeyword {
     DB_DRV_SQL_IS_NOT_NULL = 28,
     DB_DRV_SQL_DATETIME = 29,
     DB_DRV_SQL_DATE = 30,
-    DB_DRV_SQL_TIME = 31
+    DB_DRV_SQL_TIME = 31,
+	DB_DRV_SQL_TIMESTAMP = 32,
+	DB_DRV_SQL_INTERVAL_YM = 33,
+	DB_DRV_SQL_INTERVAL_DS = 34,
+	DB_DRV_SQL_BFILE = 35
 };
 
 /** @brief Field value struct.
