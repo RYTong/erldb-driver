@@ -865,35 +865,55 @@ void OracleDBOperation::encode_select_result(
     ei_x_free(&x);
 }
 
-
 int OracleDBOperation::get_data_type(int* p_index) {
     if (p_index == NULL) {
         p_index = &index_;
     }
 
     int type = -1;
-    char* type_str = NULL;
+    long key;
     switch(get_erl_type(p_index)) {
         case ERL_NIL_EXT:
             type = EMPTY;
             break;
         case ERL_SMALL_TUPLE_EXT:
         case ERL_LARGE_TUPLE_EXT:
-            decode_tuple_header(p_index);
-            if (decode_string(type_str, p_index)) {
-                if (ewp_strcmp(type_str, "datetime") == 0) {
-                    type = DATE;
-                } else if (ewp_strcmp(type_str, "timestamp") == 0) {
-                    type = TIMESTAMP;
-                } else if (ewp_strcmp(type_str, "interval_ym") == 0) {
-                    type = INTERVAL_YM;
-                } else if (ewp_strcmp(type_str, "interval_ds") == 0) {
-                    type = INTERVAL_DS;
-                } else if (ewp_strcmp(type_str, "bfile") == 0) {
-                    type = BFILEE;
-                }
+          decode_tuple_header(p_index);
+          if (decode_integer(key, p_index)) {
+            switch (key){
+            case DB_DRV_SQL_DATETIME:
+              type = DATE;
+              break;
+            case DB_DRV_SQL_TIMESTAMP:
+              type = TIMESTAMP;
+              break;
+            case DB_DRV_SQL_INTERVAL_YM:
+              type = INTERVAL_YM;
+              break;
+            case DB_DRV_SQL_INTERVAL_DS:
+              type = INTERVAL_DS;
+              break;
+            case DB_DRV_SQL_BFILE:
+              type = BFILEE;
+              break;
             }
-            break;
+          }
+          /*
+            if (decode_string(type_str, p_index)) {
+            if (ewp_strcmp(type_str, "datetime") == 0) {
+            type = DATE;
+            } else if (ewp_strcmp(type_str, "timestamp") == 0) {
+            type = TIMESTAMP;
+            } else if (ewp_strcmp(type_str, "interval_ym") == 0) {
+            type = INTERVAL_YM;
+            } else if (ewp_strcmp(type_str, "interval_ds") == 0) {
+            type = INTERVAL_DS;
+            } else if (ewp_strcmp(type_str, "bfile") == 0) {
+            type = BFILEE;
+            }
+            }
+          */
+          break;
         case ERL_SMALL_INTEGER_EXT:
         case ERL_INTEGER_EXT:
         case ERL_SMALL_BIG_EXT:
@@ -912,8 +932,6 @@ int OracleDBOperation::get_data_type(int* p_index) {
             break;
 
     }
-
-    free_string(type_str);
 
     if (type == -1) {
          DBException ex(BAD_ARG_ERROR);
