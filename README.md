@@ -4,7 +4,7 @@
 
 Copyright (c) 2013-2014 Beijing RYTong Information Technologies, Ltd.
 
-__Version:__ 2.0
+__Version:__ 2.1
 
 
 __Authors:__ cao.xu ([`cao.xu@rytong.com`](mailto:cao.xu@rytong.com)), deng.lifen ([`deng.lifen@rytong.com`](mailto:deng.lifen@rytong.com)), wang.meigong ([`wang.meigong@rytong.com`](mailto:wang.meigong@rytong.com)).
@@ -110,23 +110,23 @@ to generated C API.
 See [Database-Driven Documentation](http://github.com/esl/edown/blob/master/lib.md/index.html)
 
 
-### <a name="Configuration">Configuration</a> ###
+### <a name="Connection Parameters">Connection Parameters</a> ###
 To use db_driver, you need to configure db_driver to make default database
-connection for database-driven start-up. You can do this by editing the the
-following Erlang term to your db.conf file:
+connection for database-driven start-up. The connection parametes likes:
 
 ```
-{connect_name, [{driver, mysql},
-                {database, "test"},
-                {host, "localhost"},
-                {user, "root"},
-                {password, ""},
-                {poolsize, 8}
-                ]}.
+PoolId = test,
+ConnArgs =  [{driver, mysql},
+             {database, "test"},
+             {host, "localhost"},
+             {user, "root"},
+             {password, ""},
+             {poolsize, 8}
+             ].
 ```
 
 
-where connect_name is the name of your connection instance, the type is atom.
+where PoolId is the name of your connection instance, the type is atom.
 
 The following is required parameters.
 
@@ -137,7 +137,6 @@ host::string()          Database host name or IP address.
 user:string()           Database user.
 password:string()       Database password.
 poolsize::integer()     Connection pool size.
-threadlength::integer() Thread length.
 ```
 
 
@@ -149,76 +148,49 @@ default_pool::boolean()     Default Connection pool.
 error_handler::{Mod, Fun}   Callback Function of error handler.
 ```
 
-The configuration file support configures many connections. You can get
-connection parameters by call db_server:get_db_config(ConfigName, ConfigPath).
-ConfigName is configuration connect_name, ConfigPath is the configuration files path. db_server:get_db_config(ConfigName) use default configuration files path (config/db.conf).
-
-
 ### <a name="Getting_Started">Getting Started</a> ###
-1.Starts by normal mode.
 
+1.Starts db driver
 ```
 %% Start db driver.
-Pid = db_driver:start().
+db_api:start().
+
+%% Connection instance Id.
+PoolId = 'test'.
 
 %% Connection args.
-ConnArg = db_server:get_db_config(ConnectName).
-%% Or
 ConnArg = [{driver, mysql},
            {database, "test"},
            {host, "localhost"},
            {user, "root"},
            {password, ""},
-           {threadlength, 10},
-           {poolsize, 8}].
+           {poolsize, 8},
+           {default_pool, true}].
 
-%% Create a connection.
-{ok, ConnPool} = db_driver:connect(ConnArg).
+%% Add a connection pool.
+db_api:add_pool(PoolId, ConnArg).
 
 %% Execute sql string.
-db_driver:execute_sql(ConnPool, "select version()").
-
-%% Destroy a connect.
-db_driver:disconnect(ConnPool),
-
-%% Stop db driver.
-db_driver:stop(Pid).
-```
-
-2.Starts by server mode.
-
-Starts by the server mode, the connection information and fields information
-storage in ets table, you may use the default connection or the connection has connected to execute the database operation.
-
-```
-%% Start db server and db driver.
-db_server:start().
-
-%% Initialization default connection, the ConnectName is configured in db.conf.
-db_server:init_default(ConnectName).
-
-%% You can use the functions in module db_api to execute the database operation
-%% after start db server and create default connection.
 db_api:execute_sql("select version()").
 
-%% ConnectName is configured in db.conf.
-ConnectArgs = db_server:get_db_config(ConnectName).
+%% If you didn't set the default pool flag, you can execute sql like this.
+db_api:execute_sql("select version()", [{pool, PoolId}]).
 
-%% Create a new connection.
-db_server:connect(ConnectName, ConnectArgs).
+%% Remove a connecttion pool.
+db_api:remove_pool(PoolId),
 
-%% Operate database by use the connection.
-db_api:execute_sql("select version()", [{db_name, ConnectName}]).
-
-%% If you do not need to operation database any more, please stop the db server.
-db_server:stop().
+%% Stop db driver.
+db_api:stop().
 ```
+
+If you set the dafault pool flag in several connection pools, 
+the default pool is the last added pool. 
 
 
 ### <a name="Tests">Tests</a> ###
 
 
-See test cases in module db_sample and module db_driver_test.
+See test cases in module basic_SUITE, module informix_SUITE and module oracle_SUITE.
 
 
 ### <a name="Data_Type">Data Type</a> ###

@@ -74,15 +74,16 @@ See <a href="lib/html/index.html" target="_black">Database-Driven Documentation<
 == Configuration ==
 
 To use db_driver, you need to configure db_driver to make default database
-connection for database-driven start-up. You can do this by editing the the
-following Erlang term to your db.conf file:
+connection for database-driven start-up. The connection parametes likes: 
 ```
-{connect_name, [{driver, mysql},
-                {database, "test"},
-                {host, "localhost"},
-                {user, "root"},
-                {password, ""},
-                {poolsize, 8}]}.
+PoolId = test,
+ConnArgs =  [{driver, mysql},
+             {database, "test"},
+             {host, "localhost"},
+             {user, "root"},
+             {password, ""},
+             {poolsize, 8}
+             ].
 '''
 where connect_name is the name of your connection instance, the type is atom.
 
@@ -95,7 +96,6 @@ host::string()          Database host name or IP address.
 user:string()           Database user.
 password:string()       Database password.
 poolsize::integer()     Connection pool size.
-threadlength::integer() Thread length.
 '''
 The following is optional parameters.
 
@@ -105,9 +105,6 @@ default_pool::boolean()     Default Connection pool.
 error_handler::{Mod, Fun}   Callback Function of error handler.
 '''
 
-The configuration file support configures many connections. You can get
-connection parameters by call db_server:get_db_config(ConfigName, ConfigPath).
-ConfigName is configuration connect_name, ConfigPath is the configuration files path. db_server:get_db_config(ConfigName) use default configuration files path (config/db.conf).
 
 == Getting Started ==
 
@@ -115,6 +112,9 @@ ConfigName is configuration connect_name, ConfigPath is the configuration files 
 ```
 %% Start db driver.
 db_api:start().
+
+%% Connection instance Id.
+PoolId = 'test'.
 
 %% Connection args.
 ConnArg = [{driver, mysql},
@@ -145,7 +145,7 @@ If you set the dafault pool flag in several connection pools,
 the default pool is the last added pool. 
 
 == Tests ==
-See test cases in module db_sample and module db_driver_test.
+See test cases in module basic_SUITE, module informix_SUITE and module oracle_SUITE.
 
 == Data Type ==
 
