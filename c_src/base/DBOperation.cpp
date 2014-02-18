@@ -133,7 +133,11 @@ int DBOperation::decode_stmt_fields(FieldValue * & fields) {
         ei_decode_string(buf_, &index_, temp);
         for (int i = 0; i < len; i++) {
             fields[i].value = (void*) (new long());
-            *(long*) fields[i].value = (long) temp[i];
+            if ((long) temp[i] < 0) {
+                *(long*) fields[i].value = (long) temp[i] + 256;
+            } else {
+                *(long*) fields[i].value = (long) temp[i];
+            }
             fields[i].erl_type = ERL_SMALL_INTEGER_EXT;
             fields[i].length = sizeof(long);
         }

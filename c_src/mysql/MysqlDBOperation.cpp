@@ -1019,7 +1019,12 @@ void MysqlDBOperation::decode_expr_tuple(stringstream& sm) {
                 char *temp = new char[len];
                 ei_decode_string(buf_, &index_, temp);
                 for (int i = 0; i < len; i++) {
-                    sm << (long) temp[i];
+                    long temp_in_value = (long) temp[i];
+                    if (temp_in_value < 0) {
+                        sm << temp_in_value + 256;
+                    } else {
+                        sm << temp_in_value;
+                    }
                     if (i < len - 1) {
                         sm << ",";
                     }

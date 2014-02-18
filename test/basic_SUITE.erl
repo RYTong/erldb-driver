@@ -224,12 +224,12 @@ exec_sql(Config) ->
 
 execute_param(Config) ->
     Table = ?config(table_name, Config),
-    {ok, 1} = db_app:execute_param("insert into " ++ Table ++ " (fvarchar, ffloat, fint) values(?, ?, ?)", ["denglf", 24, 123]),
-    {ok, [["denglf"]]} = db_app:execute_param("select fvarchar from " ++ Table ++ " where fint = ?", [123]),
+    {ok, 1} = db_app:execute_param("insert into " ++ Table ++ " (fvarchar, ffloat, fint) values(?, ?, ?)", ["denglf", 24, 128]),
+    {ok, [["denglf"]]} = db_app:execute_param("select fvarchar from " ++ Table ++ " where fint = ?", [128]),
     {ok, 1} = db_app:execute_param("update " ++ Table ++ " set ffloat=? where fvarchar = ?", [22.2, "denglf"]),
-    {ok, [[22.2, 123]]} = db_app:execute_param("select ffloat,fint from " ++ Table ++ " where fint = 123", []),
+    {ok, [[22.2, 128]]} = db_app:execute_param("select ffloat,fint from " ++ Table ++ " where fint = 128", []),
     {ok, 1} = db_app:execute_param("delete from " ++ Table ++ " where fvarchar = ?", ["denglf"]),
-    {ok, []} = db_app:execute_param("select * from " ++ Table ++ " where fint = ?", [123]),
+    {ok, []} = db_app:execute_param("select * from " ++ Table ++ " where fint = ?", [128]),
     {comment, "Test the execute SQL statements."}.
 
 execute(Config) ->

@@ -45,7 +45,7 @@ ErlOpts = DebugErlFlag,
                             fun(IncFile) ->
                                 lists:foldl(
                                     fun(Y, Acc) ->
-                                        Dirs = os:cmd(lists:concat(["find ", Y, " -name '", IncFile, "'"])),
+                                        Dirs = os:cmd(lists:concat(["find ", Y, "/ -name '", IncFile, "'"])),
                                         case re:split(Dirs, "\n", [{return, list}]) of
                                             [[]] ->
                                                 Acc;
@@ -68,7 +68,7 @@ ErlOpts = DebugErlFlag,
                             fun(LibFile) ->
                                 lists:foldl(
                                     fun(Y, Acc) ->
-                                        Dirs = os:cmd(lists:concat(["find ", Y, " -name 'lib", LibFile, ".*'"])),
+                                        Dirs = os:cmd(lists:concat(["find ", Y, "/ -name 'lib", LibFile, ".*'"])),
                                         case re:split(Dirs, "\n", [{return, list}]) of
                                             [[]] ->
                                                 Acc;
