@@ -1,0 +1,5 @@
+@author denglf <deng.lifen@rytong.com>
+@title  Erlang database driver
+@version {@vsn}
+@copyright 2008-2014 Beijing RYTong Information Technologies, Ltd.
+@docfile "priv/doc/readme.edoc"

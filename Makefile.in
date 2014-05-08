@@ -95,7 +95,7 @@ include $(SRC_TOP)/build/Makefile.include.c_build
 docs: doc libdoc
 
 libdoc:
-	doxygen doc/db.doxyfile
+	doxygen priv/doc/db.doxyfile
 
 install:
 	install -d $(ERL_LIBDIR)/$(TARGETDIR)/priv

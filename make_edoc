@@ -1,0 +1,24 @@
+#!/usr/bin/env escript
+
+%% generic readme.edoc
+main([]) ->
+    ReadmeEdoc = "priv/doc/readme.edoc",
+    Cmd =
+        case os:type() of
+            {unix, darwin} ->
+                "sed -E -f priv/doc/markedoc.sed README.md > " ++ ReadmeEdoc;
+            {unix, linux} ->
+                "sed -r -f priv/doc/markedoc.sed README.md > " ++ ReadmeEdoc;
+            OsType ->
+                throw({error, {unsupported_os, OsType}})
+        end,
+    os:cmd(Cmd),
+    {ok, Bin} = file:read_file(ReadmeEdoc),
+    Bin1 = re:replace(Bin, "(```)([^`]*)\\1", "\\1\\2'''", [global]),
+    Bin2 = re:replace(Bin1, "```.*\n", "```\n", [global]),
+    Bin3 = re:replace(Bin2, "&#183;", "::", [global]),
+    Bin4 = re:replace(Bin3, "&#171;", "<<", [global]),
+    Bin5 = re:replace(Bin4, "&#187;", ">>", [global, {return, list}]),
+    Bytes = Bin5,
+    %% io:format("Bytes = ~p~n", [Bytes]),
+    file:write_file(ReadmeEdoc, Bytes).

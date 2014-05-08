@@ -17,7 +17,9 @@ priv/database_drv.so
 
 *.beam
 
-doc/lib/*
+doc/*
+
+priv/doc/readme.edoc
 
 autom4te.cache/*
 
