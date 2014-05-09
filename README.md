@@ -29,8 +29,6 @@ $ ./rebar compile
 ```
 
 ## Documentation
-db_api is a database-driven interface module, database manipulation functions detailed explanation see module db_app.
-
 In the db_driver directory, execute
 
 ```sh

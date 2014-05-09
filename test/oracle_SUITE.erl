@@ -88,11 +88,11 @@ all() ->
 %% variable, but should NOT alter/remove any existing entries.
 %%--------------------------------------------------------------------
 init_per_suite(Config) ->
-    ok = db_app:start(),
+    ok = db_api:start(),
     ct:log("~p-~p: Config = ~p~n", [?MODULE, ?LINE, Config]),
     ConnArg = ct:get_config(oracle),
-    ok = db_app:add_pool(?POOL, ConnArg),
-    {ok, _} = db_app:execute_sql("create or replace procedure proc_dropifexists(
+    ok = db_api:add_pool(?POOL, ConnArg),
+    {ok, _} = db_api:execute_sql("create or replace procedure proc_dropifexists(
             p_table in varchar2
         ) is
             v_count number(10);
@@ -117,9 +117,9 @@ init_per_suite(Config) ->
 %% Description: Cleanup after the suite.
 %%--------------------------------------------------------------------
 end_per_suite(_Config) ->
-    {ok, _} = db_app:execute_sql("drop procedure proc_dropifexists"),
-    ok = db_app:remove_pool(?POOL),
-    ok = db_app:stop(),
+    {ok, _} = db_api:execute_sql("drop procedure proc_dropifexists"),
+    ok = db_api:remove_pool(?POOL),
+    ok = db_api:stop(),
     ct:comment("Remove pool and stop db application."),
     ok.
 
@@ -172,8 +172,8 @@ end_per_group(_group, Config) ->
 init_per_testcase(TestCase, Config) ->
     ct:log("~p-~p: TestCase = ~p~n", [?MODULE, ?LINE, TestCase]),
     Table = atom_to_list(TestCase) ++ "_table",
-    {ok, _} = db_app:execute_sql("call proc_dropifexists('" ++ Table ++ "')"),
-    {ok, _} = db_app:execute_sql("CREATE TABLE " ++ Table ++ " (
+    {ok, _} = db_api:execute_sql("call proc_dropifexists('" ++ Table ++ "')"),
+    {ok, _} = db_api:execute_sql("CREATE TABLE " ++ Table ++ " (
         fint NUMBER,
         fvarchar VARCHAR2(255BYTE),
         ffloat FLOAT(126),
@@ -200,7 +200,7 @@ init_per_testcase(TestCase, Config) ->
 %%--------------------------------------------------------------------
 end_per_testcase(_TestCase, Config) ->
     Table = ?config(table_name, Config),
-    {ok, _} = db_app:execute_sql("call proc_dropifexists('" ++ Table ++ "')"),
+    {ok, _} = db_api:execute_sql("call proc_dropifexists('" ++ Table ++ "')"),
     ct:comment("Drop table."),
     Config.
 
@@ -210,44 +210,44 @@ exec_sql(Config) ->
 
 execute_param(Config) ->
     Table = ?config(table_name, Config),
-    {ok, 1} = db_app:execute_param("insert into " ++ Table ++ " (fvarchar, ffloat, fint) values(:1, :2, :3)", ["denglf", 24, 123]),
-    {ok, [["denglf"]]} = db_app:execute_param("select fvarchar from " ++ Table ++ " where fint = :1", [123]),
-    {ok, 1} = db_app:execute_param("update " ++ Table ++ " set ffloat=:1 where fvarchar = :2", [22.2, "denglf"]),
-    {ok, [[22.2, 123]]} = db_app:execute_param("select ffloat,fint from " ++ Table ++ " where fint = 123", []),
-    {ok, 1} = db_app:execute_param("delete from " ++ Table ++ " where fvarchar = :1", ["denglf"]),
-    {ok, []} = db_app:execute_param("select * from " ++ Table ++ " where fint = :1", [123]),
+    {ok, 1} = db_api:execute_param("insert into " ++ Table ++ " (fvarchar, ffloat, fint) values(:1, :2, :3)", ["denglf", 24, 123]),
+    {ok, [["denglf"]]} = db_api:execute_param("select fvarchar from " ++ Table ++ " where fint = :1", [123]),
+    {ok, 1} = db_api:execute_param("update " ++ Table ++ " set ffloat=:1 where fvarchar = :2", [22.2, "denglf"]),
+    {ok, [[22.2, 123]]} = db_api:execute_param("select ffloat,fint from " ++ Table ++ " where fint = 123", []),
+    {ok, 1} = db_api:execute_param("delete from " ++ Table ++ " where fvarchar = :1", ["denglf"]),
+    {ok, []} = db_api:execute_param("select * from " ++ Table ++ " where fint = :1", [123]),
     {comment, "Test the execute SQL statements."}.
 
 execute(Config) ->
     Table = list_to_atom(?config(table_name, Config)),
-    {ok, 1} = db_app:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}]),
-    {ok, 1} = db_app:insert(Table, [{fvarchar, "insert test"}, {ffloat, 32}, {fint, 2}]),
-    {ok, [[2]]} = db_app:select(Table, {fint, '>', 1}, [
+    {ok, 1} = db_api:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}]),
+    {ok, 1} = db_api:insert(Table, [{fvarchar, "insert test"}, {ffloat, 32}, {fint, 2}]),
+    {ok, [[2]]} = db_api:select(Table, {fint, '>', 1}, [
         {fields, fint}
         %% {extras, [{order, {fint, desc}}]}
     ]),
-    {ok, [[2, 44.25]]} = db_app:select(Table, [], [
+    {ok, [[2, 44.25]]} = db_api:select(Table, [], [
         {fields, [{count, ['*']},
         {sum, [ffloat]}]}]),
-    {ok, 1} = db_app:update(Table, [
+    {ok, 1} = db_api:update(Table, [
         {fvarchar, "update test"},
         {fint, 2}
         %% {fint, {{{fint, '*', 2}, '+', 1}, '-', fint}}
     ],{fvarchar, '=', "hello"}),
-    {ok, [[2], [2]]} = db_app:select(Table, [], [
+    {ok, [[2], [2]]} = db_api:select(Table, [], [
         {fields, fint}
         %% {extras, [{order, {fint, desc}}]}
     ]),
-    {ok, [[2]]} = db_app:select(Table, [], [
+    {ok, [[2]]} = db_api:select(Table, [], [
         {fields, fint},
         %% {extras, [{order, {fint, desc}}]},
         {distinct, true}]),
-    {ok, 1} = db_app:delete(Table, {fvarchar, '=', "insert test"}),
-    %% {ok, [[14.25]]} = db_app:select(Table, [], [{fields, {fint, '+', ffloat}}]),
-    {ok, [[12.25]]} = db_app:select(Table, [], [{fields, ffloat}]),
-    {ok, 1} = db_app:delete(Table, []),
-    {ok, []} = db_app:select(Table, []),
-    {ok, 1} = db_app:insert(Table, [
+    {ok, 1} = db_api:delete(Table, {fvarchar, '=', "insert test"}),
+    %% {ok, [[14.25]]} = db_api:select(Table, [], [{fields, {fint, '+', ffloat}}]),
+    {ok, [[12.25]]} = db_api:select(Table, [], [{fields, ffloat}]),
+    {ok, 1} = db_api:delete(Table, []),
+    {ok, []} = db_api:select(Table, []),
+    {ok, 1} = db_api:insert(Table, [
         {fint, 38524},
         {ffloat, 238954.345},
         %% {fdate, {datetime, {{2010, 3, 24}, {3, 10, 20}}}},
@@ -255,7 +255,7 @@ execute(Config) ->
         {fvarchar, "test varchar"},
         {fblob, <<34,56,0,54,75>>}
     ]),
-    {ok, 1} = db_app:update(Table, [
+    {ok, 1} = db_api:update(Table, [
         {fint, 34354},
         {ffloat, 4546.343},
         %% {fdate, {datetime, {{2010, 3, 3}, {3, 10, 20}}}},
@@ -263,7 +263,7 @@ execute(Config) ->
         {fvarchar, "test1 varchar"},
         {fblob, <<34,56,0,55,75>>}
     ], {fint, '=', 38524}),
-    {ok, 0} = db_app:delete(Table, {'and', [
+    {ok, 0} = db_api:delete(Table, {'and', [
         {fint, '=', 200},
         {ftimestamp, '=', {timestamp, {{2010, 3, 24}, {11, 19, 30, 0}, {8, 0}}}}]}),
     {comment, "Test of basic data types and insert, update, delete, and select operations."}.
@@ -279,28 +279,28 @@ long_sql(Config) ->
     Sql = "INSERT INTO " ++ Table ++ " (fint, fdate, fvarchar, ffloat)"
         " SELECT 1,to_date('2010-10-25 10:58:20','yyyy-mm-dd hh:mi:ss'),'test long insert sql',123.123 FROM DUAL"
         ++ LongData,
-    {ok, N} = db_app:execute_sql(Sql),
+    {ok, N} = db_api:execute_sql(Sql),
     {comment, "Test long SQL statements."}.
 
 %% datetime(Config) ->
 %%     Table = list_to_atom(?config(table_name, Config)),
-%%     {ok, 1} = db_app:insert(Table, [{fvarchar, "date"},
+%%     {ok, 1} = db_api:insert(Table, [{fvarchar, "date"},
 %%         {fint, 23},
 %%         {ffloat, 1.25},
 %%         {fdatetime, {datetime, {{2010, 2, 15}, {1, 2, 3}}}},
 %%         {fdate, {date, {2010, 2, 3}}},
 %%         {ftime, {time, {5, 6, 7}}}]),
-%%     {ok, [["date", {datetime, {{2010, 2, 15}, {1, 2, 3}}}]]} = db_app:select(Table,
+%%     {ok, [["date", {datetime, {{2010, 2, 15}, {1, 2, 3}}}]]} = db_api:select(Table,
 %%         {'and', [{fdatetime, '=', {datetime, {{2010, 2, 15}, {1, 2, 3}}}}, {ftime, '=', {time, {5, 6, 7}}}]},
 %%         [{fields, [fvarchar, fdatetime]}]),
-%%     {ok, 1} = db_app:update(Table, [{fdate, {date, {2010, 12, 27}}}],
+%%     {ok, 1} = db_api:update(Table, [{fdate, {date, {2010, 12, 27}}}],
 %%         {'and', [{fdatetime, '=', {datetime, {{2010, 2, 15}, {1, 2, 3}}}}, {ftime, '=', {time, {5, 6, 7}}}]}),
-%%     {ok, [["date", {date, {2010, 12, 27}}]]} = db_app:select(Table,
+%%     {ok, [["date", {date, {2010, 12, 27}}]]} = db_api:select(Table,
 %%         {'and', [{fdatetime, '=', {datetime, {{2010, 2, 15}, {1, 2, 3}}}}, {ftime, '=', {time, {5, 6, 7}}}]},
 %%         [{fields, [fvarchar, fdate]}]),
-%%     {ok, 1} = db_app:delete(Table,
+%%     {ok, 1} = db_api:delete(Table,
 %%         {'and', [{fdatetime, '=', {datetime, {{2010, 2, 15}, {1, 2, 3}}}}, {ftime, '=', {time, {5, 6, 7}}}]}),
-%%     {ok, []} = db_app:select(Table, []),
+%%     {ok, []} = db_api:select(Table, []),
 %%     {comment, "Test datetime data type."}.
 
 binary(Config) ->
@@ -308,57 +308,57 @@ binary(Config) ->
 
 trans(Config) ->
     TableName = list_to_atom(?config(table_name, Config)),
-    {atomic, ok} = db_app:transaction(
+    {atomic, ok} = db_api:transaction(
         fun() ->
             Table = TableName,
-            {ok, 1} = db_app:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}]),
-            {ok, 1} = db_app:insert(Table, [{fvarchar, "insert test"}, {ffloat, 32}, {fint, 2}]),
-            {ok, [[2]]} = db_app:select(Table, {fint, '>', 1},
+            {ok, 1} = db_api:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}]),
+            {ok, 1} = db_api:insert(Table, [{fvarchar, "insert test"}, {ffloat, 32}, {fint, 2}]),
+            {ok, [[2]]} = db_api:select(Table, {fint, '>', 1},
                 [{fields, fint}
                  %% {extras, [{order, {fint, desc}}]}
             ]),
-            {ok, [[2, 44.25]]} = db_app:select(Table, [],
+            {ok, [[2, 44.25]]} = db_api:select(Table, [],
                 [{fields, [{count, ['*']}, {sum, [ffloat]}]}]),
-            {ok, 1} = db_app:update(Table,
+            {ok, 1} = db_api:update(Table,
                 [{fvarchar, "update test"}, {fint, 2}], {fvarchar, '=', "hello"}),
-            {ok, [[2], [2]]} = db_app:select(Table, [],
+            {ok, [[2], [2]]} = db_api:select(Table, [],
                 [{fields, fint}
                  %% {extras, [{order, {fint, desc}}]}
             ]),
-            {ok, [[2]]} = db_app:select(Table, [],
+            {ok, [[2]]} = db_api:select(Table, [],
                      [{fields, fint},
                       %% {extras, [{order, {fint, desc}}]},
                       {distinct, true}]),
-            {ok, 1} = db_app:delete(Table, {fvarchar, '=', "insert test"}),
-            %% {ok, [[14.25]]} = db_app:select(Table, [],
+            {ok, 1} = db_api:delete(Table, {fvarchar, '=', "insert test"}),
+            %% {ok, [[14.25]]} = db_api:select(Table, [],
                 %% [{fields, {fint, '+', ffloat}}]),
-            {ok, 1} = db_app:delete(Table, []),
+            {ok, 1} = db_api:delete(Table, []),
             ok
         end),
-    {aborted, {{_, _Err}, {rollback_result, {ok, "ROLLBACK"}}}} = db_app:transaction(
+    {aborted, {{_, _Err}, {rollback_result, {ok, "ROLLBACK"}}}} = db_api:transaction(
         fun() ->
             Table = TableName,
-            {ok, 1} = db_app:insert(Table, [{fint, 1}, {fvarchar, "trans test"}]),
-            {ok, 0} = db_app:insert(Table, [{fint, 1}, {fvarchar, "trans test"}]),
-            {ok, 1} = db_app:insert(Table, [{fint, 2}, {fvarchar, "trans test"}])
+            {ok, 1} = db_api:insert(Table, [{fint, 1}, {fvarchar, "trans test"}]),
+            {ok, 0} = db_api:insert(Table, [{fint, 1}, {fvarchar, "trans test"}]),
+            {ok, 1} = db_api:insert(Table, [{fint, 2}, {fvarchar, "trans test"}])
         end),
-    {ok, []} = db_app:select(TableName, []),
+    {ok, []} = db_api:select(TableName, []),
     {comment, "Test transactions."}.
 
 %% connect(Config) ->
 %%     TableName = ?config(table_name, Config),
 %%     Table = list_to_atom(TableName),
-%%     {ok, _} = db_app:execute_sql("drop database if exists test_connect_1"),
-%%     {ok, _} = db_app:execute_sql("drop database if exists test_connect_2"),
-%%     {ok, 1} = db_app:execute_sql("create database test_connect_1"),
-%%     {ok, 1} = db_app:execute_sql("create database test_connect_2"),
+%%     {ok, _} = db_api:execute_sql("drop database if exists test_connect_1"),
+%%     {ok, _} = db_api:execute_sql("drop database if exists test_connect_2"),
+%%     {ok, 1} = db_api:execute_sql("create database test_connect_1"),
+%%     {ok, 1} = db_api:execute_sql("create database test_connect_2"),
 %%     ConnArg = ct:get_config(oracle),
 %%     A1 = lists:keydelete(default_pool, 1, lists:keyreplace(database, 1, ConnArg, {database, "test_connect_1"})),
 %%     A2 = lists:keydelete(default_pool, 1, lists:keyreplace(database, 1, ConnArg, {database, "test_connect_2"})),
 %%     C1 = {test_connect_1},
 %%     C2 = {test_connect_2},
-%%     ok = db_app:add_pool(C1, A1),
-%%     ok = db_app:add_pool(C2, A2),
+%%     ok = db_api:add_pool(C1, A1),
+%%     ok = db_api:add_pool(C2, A2),
 %%     CreateSql = "CREATE TABLE " ++ TableName ++ " (
 %%         id int(11) NOT NULL auto_increment,
 %%         fbit bit(4) default NULL,
@@ -389,66 +389,66 @@ trans(Config) ->
 %%         flongblob longblob,
 %%         PRIMARY KEY  (id)
 %%     ) ENGINE=InnoDB DEFAULT CHARSET=utf8",
-%%     {ok, 0} = db_app:execute_sql(CreateSql, [{pool, C1}]),
-%%     {ok, 0} = db_app:execute_sql(CreateSql, [{pool, C2}]),
-%%     {ok, 1} = db_app:execute_param("insert into " ++ TableName ++ " (fvarchar, ffloat, fint) values(?,?,?)", ["denglf", 24, 123], [{pool, C1}]),
-%%     {ok, [["denglf"]]} = db_app:select(Table, {fint, '>', 0}, [{fields, fvarchar}, {pool, C1}]),
-%%     {ok, []} = db_app:select(Table, [], [{pool, C2}]),
+%%     {ok, 0} = db_api:execute_sql(CreateSql, [{pool, C1}]),
+%%     {ok, 0} = db_api:execute_sql(CreateSql, [{pool, C2}]),
+%%     {ok, 1} = db_api:execute_param("insert into " ++ TableName ++ " (fvarchar, ffloat, fint) values(?,?,?)", ["denglf", 24, 123], [{pool, C1}]),
+%%     {ok, [["denglf"]]} = db_api:select(Table, {fint, '>', 0}, [{fields, fvarchar}, {pool, C1}]),
+%%     {ok, []} = db_api:select(Table, [], [{pool, C2}]),
 %%
-%%     {ok, 1} = db_app:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}], [{pool, C2}]),
-%%     {ok, 1} = db_app:insert(Table, [{fvarchar, "insert test"}, {ffloat, 3.2}, {fint, 2}], [{pool, C2}]),
-%%     {ok, 1} = db_app:update(Table, [{fint, 3}], {fvarchar, '=', "insert test"}, [{pool, C2}]),
-%%     {ok, [[3, 3.2], [1, 12.25]]} = db_app:select(Table, {fint, '>', 0},
+%%     {ok, 1} = db_api:insert(Table, [{fvarchar, "hello"}, {ffloat, 12.25}, {fint, 1}], [{pool, C2}]),
+%%     {ok, 1} = db_api:insert(Table, [{fvarchar, "insert test"}, {ffloat, 3.2}, {fint, 2}], [{pool, C2}]),
+%%     {ok, 1} = db_api:update(Table, [{fint, 3}], {fvarchar, '=', "insert test"}, [{pool, C2}]),
+%%     {ok, [[3, 3.2], [1, 12.25]]} = db_api:select(Table, {fint, '>', 0},
 %%         [{pool, C2},
 %%          {fields, [fint, ffloat]},
 %%          {extras, [{order, {fint, desc}}]}]),
-%%     ok = db_app:remove_pool(C1),
-%%     %% ok = db_app:remove_pool(C2),
-%%     {ok, 1} = db_app:execute_sql("drop database test_connect_1"),
-%%     {ok, 1} = db_app:execute_sql("drop database test_connect_2"),
+%%     ok = db_api:remove_pool(C1),
+%%     %% ok = db_api:remove_pool(C2),
+%%     {ok, 1} = db_api:execute_sql("drop database test_connect_1"),
+%%     {ok, 1} = db_api:execute_sql("drop database test_connect_2"),
 %%     {comment, "Test connect pools."}.
 
 stmt(Config) ->
     Table = ?config(table_name, Config),
     PInsert = p_insert,
     PSelect = p_select,
-    ok = db_app:prepare(PInsert, "insert into " ++ Table ++ " (fvarchar, fint) values(:1, :2)"),
-    ok = db_app:prepare(PSelect, "select fvarchar from " ++ Table ++ " where fint = :1"),
-    {ok, 1} = db_app:prepare_execute(PInsert, ["denglf", 1]),
-    {ok, [["denglf"]]} = db_app:prepare_execute(PSelect, [1]),
-    {error, _} = db_app:prepare(PSelect, "select fint from " ++ Table ++ " where fvarchar = 'denglf'"),
-    {ok, [["denglf"]]} = db_app:prepare_execute(PSelect, [1]),
+    ok = db_api:prepare(PInsert, "insert into " ++ Table ++ " (fvarchar, fint) values(:1, :2)"),
+    ok = db_api:prepare(PSelect, "select fvarchar from " ++ Table ++ " where fint = :1"),
+    {ok, 1} = db_api:prepare_execute(PInsert, ["denglf", 1]),
+    {ok, [["denglf"]]} = db_api:prepare_execute(PSelect, [1]),
+    {error, _} = db_api:prepare(PSelect, "select fint from " ++ Table ++ " where fvarchar = 'denglf'"),
+    {ok, [["denglf"]]} = db_api:prepare_execute(PSelect, [1]),
     {comment, "Test prepare statements."}.
 
 %% stored_procedure(Config) ->
 %%     Table = ?config(table_name, Config),
-%%     {ok, 1} = db_app:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 123)"),
-%%     {ok, 1} = db_app:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 456)"),
-%%     {ok, 1} = db_app:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 789)"),
+%%     {ok, 1} = db_api:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 123)"),
+%%     {ok, 1} = db_api:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 456)"),
+%%     {ok, 1} = db_api:execute_sql("insert into " ++ Table ++ " (fvarchar, fint) values('denglf', 789)"),
 %%     Procedure = "procedure" ++ Table,
-%%     {_, _} = db_app:execute_sql("drop procedure " ++ Procedure),
-%%     {ok, _} = db_app:execute_sql("create or replace procedure " ++ Procedure ++ " as; begin select fvarchar,fint from " ++ Table ++ "; end;"),
-%%     {ok, [["denglf",123],["denglf",456],["denglf",789]]} = db_app:execute_sql("call " ++ Procedure ++ "();"),
-%%     {ok, 0} = db_app:execute_sql("drop procedure " ++ Procedure),
+%%     {_, _} = db_api:execute_sql("drop procedure " ++ Procedure),
+%%     {ok, _} = db_api:execute_sql("create or replace procedure " ++ Procedure ++ " as; begin select fvarchar,fint from " ++ Table ++ "; end;"),
+%%     {ok, [["denglf",123],["denglf",456],["denglf",789]]} = db_api:execute_sql("call " ++ Procedure ++ "();"),
+%%     {ok, 0} = db_api:execute_sql("drop procedure " ++ Procedure),
 %%     {comment, "Test procedure."}.
 
 change_pool_size(Config) ->
     PoolId = list_to_atom(?config(table_name, Config)),
     ConnArg = lists:keydelete(default_pool, 1, ct:get_config(oracle)),
-    ok = db_app:add_pool(PoolId, lists:keyreplace(poolsize, 1, ConnArg, {poolsize, 5})),
-    5 = db_app:get_pool_info(PoolId, size),
-    ok = db_app:increment_pool_size(PoolId, 10),
-    15 = db_app:get_pool_info(PoolId, size),
-    ok = db_app:decrement_pool_size(PoolId, 8),
-    7 = db_app:get_pool_info(PoolId, size),
-    ok = db_app:decrement_pool_size(PoolId, 8),
-    0 = db_app:get_pool_info(PoolId, size),
-    ok = db_app:remove_pool(PoolId),
-    {error, pool_not_found} = (catch(db_app:get_pool_info(PoolId, size))),
+    ok = db_api:add_pool(PoolId, lists:keyreplace(poolsize, 1, ConnArg, {poolsize, 5})),
+    5 = db_api:get_pool_info(PoolId, size),
+    ok = db_api:increment_pool_size(PoolId, 10),
+    15 = db_api:get_pool_info(PoolId, size),
+    ok = db_api:decrement_pool_size(PoolId, 8),
+    7 = db_api:get_pool_info(PoolId, size),
+    ok = db_api:decrement_pool_size(PoolId, 8),
+    0 = db_api:get_pool_info(PoolId, size),
+    ok = db_api:remove_pool(PoolId),
+    {error, pool_not_found} = (catch(db_api:get_pool_info(PoolId, size))),
     {comment, "Test change pool size."}.
 
 test_basic(Config) ->
     Table = ?config(table_name, Config),
-    {ok, 1} = db_app:execute_sql("insert into " ++ Table ++ " (fint, fvarchar) values(1, 'a')"),
-    {ok, [[1, "a"]]} = db_app:execute_sql("select fint,fvarchar from " ++ Table),
+    {ok, 1} = db_api:execute_sql("insert into " ++ Table ++ " (fint, fvarchar) values(1, 'a')"),
+    {ok, [[1, "a"]]} = db_api:execute_sql("select fint,fvarchar from " ++ Table),
     {comment, "Test case."}.

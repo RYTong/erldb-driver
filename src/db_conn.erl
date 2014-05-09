@@ -334,7 +334,7 @@ add_pool(PoolId, {ConnArgs, ErrorHandler}) when is_record(ConnArgs, conn_args) -
     end.
 
 set_table_schema(PoolId) ->
-    TableInfos = db_app:get_table_schemas(PoolId),
+    TableInfos = db_api:get_table_schemas(PoolId),
     db_conn_server:set_table_schema(PoolId, TableInfos).
 
 %%------------------------------------------------------------------------------
