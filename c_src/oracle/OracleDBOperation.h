@@ -236,8 +236,11 @@ private:
     inline void encode_string(unsigned int colIndex,
             oracle::occi::ResultSet* rset, ei_x_buff * const x) {
         string str = rset->getString(colIndex);
-
-        ei_x_encode_string(x, str.c_str());
+        if(0 == str.compare("NULL")){
+            ei_x_encode_atom(x, "undefined");
+		}else{
+            ei_x_encode_string(x, str.c_str());
+		}
     }
 
     inline void encode_binary(unsigned int colIndex,
