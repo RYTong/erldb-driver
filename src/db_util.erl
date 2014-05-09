@@ -46,7 +46,7 @@
 
 -define(DATABASE_LIB,               "database_drv").
 -define(DATABASE_LIB_DIR,           "priv").
--define(DB_API_MOD,                 db_app).
+-define(DB_API_MOD,                 db_api).
 
 %%------------------------------------------------------------------------------
 %% API Functions
