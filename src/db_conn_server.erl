@@ -573,8 +573,13 @@ pass_on_or_queue_as_available(State, Connection) ->
                     {{value, Pid}, OtherWaiting} = queue:out(Waiting),
                     PoolNow = Pool#pool{waiting = OtherWaiting},
                     StateNow = State#state{pools = [PoolNow|OtherPools]},
-                    erlang:send(Pid, {connection, Connection}),
-                    {ok, StateNow}
+                    case erlang:is_process_alive(Pid) of
+                        true ->
+                            erlang:send(Pid, {connection, Connection}),
+                            {ok, StateNow};
+			_ ->
+                            pass_on_or_queue_as_available(StateNow, Connection)
+                    end
             end;
         undefined ->
             {{error, pool_not_found}, State}
