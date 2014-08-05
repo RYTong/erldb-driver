@@ -30,3 +30,5 @@ ebin/db.app
 *.d
 
 logs/*
+
+.rebar/erlcinfo
