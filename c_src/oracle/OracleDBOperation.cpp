@@ -24,6 +24,7 @@
 #include "OracleDBOperation.h"
 #include "../base/ConnectionPool.h"
 #include "../util/EiEncoder.h"
+#include <unistd.h>
 
 static const char* STMT_NULL_ERROR = "fail to get stmt";
 
