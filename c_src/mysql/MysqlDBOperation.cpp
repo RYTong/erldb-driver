@@ -381,6 +381,8 @@ void MysqlDBOperation::exec_stmt(StmtData* stmt_data, FieldValue* stmt_fields,
             default:
                 break;
         }
+        delete bind[i].is_null;
+        delete bind[i].length;
         bind[i].buffer = NULL;
     }
     delete [] bind;
